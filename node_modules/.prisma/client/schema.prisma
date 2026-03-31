@@ -14,6 +14,7 @@ model User {
   password   String
   role       String   @default("ANALISTA")
   status     String   @default("PENDENTE")
+  area       String   @default("")
   created_at DateTime @default(now())
 
   projects_led      Project[]            @relation("ProjectLeader")

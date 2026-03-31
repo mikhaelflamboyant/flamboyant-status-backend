@@ -4,7 +4,7 @@ const prisma = new PrismaClient()
 const listUsers = async (req, res) => {
   const users = await prisma.user.findMany({
     where: { status: 'ATIVO' },
-    select: { id: true, email: true, name: true, role: true, created_at: true }
+    select: { id: true, email: true, name: true, role: true, area: true, created_at: true }
   })
   return res.status(200).json(users)
 }
@@ -56,7 +56,7 @@ const updateUserRole = async (req, res) => {
 const listPendingUsers = async (req, res) => {
   const users = await prisma.user.findMany({
     where: { status: 'PENDENTE' },
-    select: { id: true, email: true, name: true, role: true, created_at: true, status: true }
+    select: { id: true, email: true, name: true, role: true, area: true, created_at: true, status: true }
   })
   return res.status(200).json(users)
 }
@@ -132,6 +132,13 @@ const deleteUser = async (req, res) => {
 
   if (!CAN_DELETE[requester.role].includes(target.role)) {
     return res.status(403).json({ error: 'Você não pode excluir um usuário com perfil igual ou superior ao seu' })
+  }
+
+  if (requester.role !== 'ANALISTA_MASTER') {
+    const requesterUser = await prisma.user.findUnique({ where: { id: requester.id } })
+    if (requesterUser.area !== target.area) {
+      return res.status(403).json({ error: 'Você só pode excluir usuários da mesma área que a sua' })
+    }
   }
 
   await prisma.user.delete({ where: { id } })

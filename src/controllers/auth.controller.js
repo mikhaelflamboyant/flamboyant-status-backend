@@ -15,7 +15,7 @@ const validatePassword = (password) => {
 }
 
 const register = async (req, res) => {
-  const { email, password, name } = req.body
+  const { email, password, name, area } = req.body
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Nome, e-mail e senha são obrigatórios' })
@@ -39,7 +39,7 @@ const register = async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, 10)
 
   const user = await prisma.user.create({
-    data: { email, name, password: hashedPassword }
+    data: { email, name, password: hashedPassword, area: area || '' }
   })
 
   return res.status(201).json({
@@ -81,7 +81,7 @@ const login = async (req, res) => {
 
   return res.status(200).json({
     token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role, created_at: user.created_at }
+    user: { id: user.id, email: user.email, name: user.name, role: user.role, area: user.area, created_at: user.created_at }
   })
 }
 
