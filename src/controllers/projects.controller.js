@@ -16,8 +16,14 @@ const listProjects = async (req, res) => {
   const projects = await prisma.project.findMany({
     where: { archived: false },
     include: {
+      requesters: {
+        include: {
+          user: { select: { id: true, name: true, area: true } }
+        }
+      },
       owner: { select: { id: true, name: true, email: true } },
-      members: { include: { user: { select: { id: true, name: true, email: true } } } }
+      members: { include: { user: { select: { id: true, name: true, email: true } } } },
+      costs: true,
     },
     orderBy: { created_at: 'desc' }
   })
@@ -58,6 +64,11 @@ const getProjectById = async (req, res) => {
   const project = await prisma.project.findUnique({
     where: { id },
     include: {
+      requesters: {
+        include: {
+          user: { select: { id: true, name: true, area: true } }
+        }
+      },
       owner: { select: { id: true, name: true, email: true } },
       members: { include: { user: { select: { id: true, name: true, email: true } } } },
       status_updates: {
@@ -66,7 +77,8 @@ const getProjectById = async (req, res) => {
       },
       requirements: {
         include: { author: { select: { id: true, name: true } } }
-      }
+      },
+      costs: true,
     }
   })
 
@@ -80,12 +92,12 @@ const getProjectById = async (req, res) => {
 const createProject = async (req, res) => {
   const {
     title, area, requester_name, execution_type,
-    priority, description, budget_planned,
-    budget_actual, go_live, owner_id
+    priority, description, go_live, owner_id, member_ids,
+    requester_ids, responsible_ids, costs
   } = req.body
 
-  if (!title || !area || !requester_name || !description || !go_live) {
-    return res.status(400).json({ error: 'Campos obrigatórios: title, area, requester_name, description, go_live' })
+  if (!title || !description || !go_live) {
+    return res.status(400).json({ error: 'Campos obrigatórios: título, descrição e go-live.' })
   }
 
   const goLiveDate = new Date(go_live)
@@ -99,17 +111,53 @@ const createProject = async (req, res) => {
     data: {
       title,
       area,
-      requester_name,
+      requester_name: '',
       execution_type: execution_type || 'INTERNA',
       priority: priority || 3,
       description,
-      budget_planned: budget_planned || null,
       budget_actual: budget_actual || null,
       go_live: new Date(go_live),
       owner_id: owner_id || null,
       traffic_light: autoTrafficLight
     }
   })
+
+  if (requester_ids && requester_ids.length > 0) {
+    for (const user_id of requester_ids) {
+      await prisma.projectRequester.create({
+        data: { project_id: project.id, user_id, type: 'SOLICITANTE' }
+      })
+    }
+  }
+
+  if (responsible_ids && responsible_ids.length > 0) {
+    for (const user_id of responsible_ids) {
+      await prisma.projectRequester.create({
+        data: { project_id: project.id, user_id, type: 'RESPONSAVEL' }
+      })
+    }
+  }
+
+  if (member_ids && member_ids.length > 0) {
+    for (const user_id of member_ids) {
+      await prisma.projectMember.create({
+        data: { project_id: project.id, user_id }
+      })
+    }
+  }
+
+  if (costs && costs.length > 0) {
+    for (const cost of costs) {
+      await prisma.projectCost.create({
+        data: {
+          project_id: project.id,
+          name: cost.name,
+          budget_planned: parseFloat(cost.budget_planned),
+          budget_actual: cost.budget_actual ? parseFloat(cost.budget_actual) : null,
+        }
+      })
+    }
+  }
 
   return res.status(201).json(project)
 }

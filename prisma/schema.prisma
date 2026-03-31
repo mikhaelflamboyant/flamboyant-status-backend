@@ -11,6 +11,7 @@ model User {
   id         String   @id @default(uuid())
   email      String   @unique
   name       String
+  project_requests ProjectRequester[]
   password   String
   role       String   @default("ANALISTA")
   status     String   @default("PENDENTE")
@@ -28,13 +29,15 @@ model Project {
   id             String    @id @default(uuid())
   title          String
   area           String
-  requester_name String
+  requester_name String @default("")
+  requesters     ProjectRequester[]
   execution_type String    @default("INTERNA")
   priority       Int       @default(3)
   description    String
   budget_planned Float?
   budget_actual  Float?
   go_live        DateTime
+  costs ProjectCost[]
   current_phase  String    @default("RECEBIDA")
   traffic_light  String    @default("VERDE")
   completion_pct Int       @default(0)
@@ -60,6 +63,30 @@ model ProjectMember {
   user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([project_id, user_id])
+}
+
+model ProjectRequester {
+  id          String   @id @default(uuid())
+  project_id  String
+  user_id     String
+  type        String   @default("SOLICITANTE")
+  assigned_at DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([project_id, user_id, type])
+}
+
+model ProjectCost {
+  id             String   @id @default(uuid())
+  project_id     String
+  name           String
+  budget_planned Float
+  budget_actual  Float?
+  created_at     DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
 }
 
 model StatusUpdate {
