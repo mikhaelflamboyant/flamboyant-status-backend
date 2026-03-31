@@ -3,6 +3,7 @@ const prisma = new PrismaClient()
 
 const listUsers = async (req, res) => {
   const users = await prisma.user.findMany({
+    where: { status: 'ATIVO' },
     select: { id: true, email: true, name: true, role: true, created_at: true }
   })
   return res.status(200).json(users)
