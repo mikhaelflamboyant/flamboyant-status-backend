@@ -13,8 +13,36 @@ const calculateTrafficLight = (go_live, current_traffic_light) => {
 const prisma = new PrismaClient()
 
 const listProjects = async (req, res) => {
+  const requester = req.user
+
+  let whereClause = { archived: false }
+
+  if (requester.role === 'ANALISTA') {
+    whereClause = {
+      archived: false,
+      OR: [
+        {
+          requesters: {
+            some: { user_id: requester.id }
+          }
+        },
+        {
+          members: {
+            some: { user_id: requester.id }
+          }
+        }
+      ]
+    }
+  } else if (requester.role === 'GERENTE' || requester.role === 'COORDENADOR') {
+    const user = await prisma.user.findUnique({ where: { id: requester.id } })
+    whereClause = {
+      archived: false,
+      area: { contains: user.area }
+    }
+  }
+
   const projects = await prisma.project.findMany({
-    where: { archived: false },
+    where: whereClause,
     include: {
       requesters: {
         include: {

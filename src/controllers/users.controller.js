@@ -2,8 +2,13 @@ const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
 const listUsers = async (req, res) => {
+  const { area } = req.query
+
+  const where = { status: 'ATIVO' }
+  if (area) where.area = area
+
   const users = await prisma.user.findMany({
-    where: { status: 'ATIVO' },
+    where,
     select: { id: true, email: true, name: true, role: true, area: true, created_at: true }
   })
   return res.status(200).json(users)
