@@ -115,7 +115,6 @@ const createProject = async (req, res) => {
       execution_type: execution_type || 'INTERNA',
       priority: priority || 3,
       description,
-      budget_actual: budget_actual || null,
       go_live: new Date(go_live),
       owner_id: owner_id || null,
       traffic_light: autoTrafficLight
@@ -229,17 +228,25 @@ const deleteProject = async (req, res) => {
   const { id } = req.params
   const requester = req.user
 
-  if (!['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)) {
-    return res.status(403).json({ error: 'Sem permissão para excluir projetos' })
-  }
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: { requesters: true }
+  })
 
-  const project = await prisma.project.findUnique({ where: { id } })
   if (!project) {
     return res.status(404).json({ error: 'Projeto não encontrado' })
   }
 
-  await prisma.project.delete({ where: { id } })
+  const isAnalistaMaster = requester.role === 'ANALISTA_MASTER'
+  const isResponsible = project.requesters.some(
+    r => r.user_id === requester.id && r.type === 'RESPONSAVEL'
+  )
 
+  if (!isAnalistaMaster && !isResponsible) {
+    return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
+  }
+
+  await prisma.project.delete({ where: { id } })
   return res.status(200).json({ message: 'Projeto excluído com sucesso' })
 }
 
