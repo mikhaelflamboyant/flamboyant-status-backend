@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const { notifyNewStatus } = require('../services/notifications.service')
 
 const listStatusUpdates = async (req, res) => {
   const { project_id } = req.params
@@ -50,7 +51,10 @@ const createStatusUpdate = async (req, res) => {
 
   const project = await prisma.project.findUnique({
     where: { id: project_id },
-    include: { members: true }
+    include: {
+      members: true,
+      requesters: true
+    }
   })
 
   if (!project) {
@@ -59,7 +63,7 @@ const createStatusUpdate = async (req, res) => {
 
   const isOwner = project.owner_id === requester.id
   const isMember = project.members.some(m => m.user_id === requester.id)
-  const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+  const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'SUPERINTENDENTE'].includes(requester.role)
 
   if (!isOwner && !isMember && !isPrivileged) {
     return res.status(403).json({ error: 'Sem permissão para atualizar este projeto' })
@@ -79,6 +83,38 @@ const createStatusUpdate = async (req, res) => {
     }
   })
 
+  const linkedUserIds = [
+    ...project.requesters.map(r => r.user_id),
+    ...project.members.map(m => m.user_id),
+  ].filter(uid => uid !== requester.id)
+
+  const managers = await prisma.user.findMany({
+    where: {
+      status: 'ATIVO',
+      role: { in: ['SUPERINTENDENTE', 'ANALISTA_MASTER'] }
+    }
+  })
+
+  const areaManagers = await prisma.user.findMany({
+    where: {
+      status: 'ATIVO',
+      role: { in: ['GERENTE', 'COORDENADOR'] },
+      area: { in: project.area.split(', ') }
+    }
+  })
+
+  const linkedUsers = await prisma.user.findMany({
+    where: { id: { in: linkedUserIds }, status: 'ATIVO' }
+  })
+
+  const allToNotify = [
+    ...linkedUsers,
+    ...managers,
+    ...areaManagers,
+  ].filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i)
+
+  await notifyNewStatus(project, update, allToNotify)
+
   return res.status(201).json(update)
 }
 
@@ -96,7 +132,7 @@ const updateStatusUpdate = async (req, res) => {
   }
 
   const isAuthor = update.author_id === requester.id
-  const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+  const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'SUPERINTENDENTE'].includes(requester.role)
 
   if (!isAuthor && !isPrivileged) {
     return res.status(403).json({ error: 'Sem permissão para editar esta atualização' })

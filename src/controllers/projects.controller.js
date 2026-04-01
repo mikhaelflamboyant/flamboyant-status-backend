@@ -1,16 +1,9 @@
 const { PrismaClient } = require('@prisma/client')
-
-const calculateTrafficLight = (go_live, current_traffic_light) => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const goLiveDate = new Date(go_live)
-  goLiveDate.setHours(0, 0, 0, 0)
-
-  if (goLiveDate < today) return 'VERMELHO'
-  return current_traffic_light
-}
-
 const prisma = new PrismaClient()
+const {
+  notifyUserLinkedToProject,
+  notifyNewProject
+} = require('../services/notifications.service')
 
 const listProjects = async (req, res) => {
   const requester = req.user
@@ -69,14 +62,34 @@ const listProjects = async (req, res) => {
       })
       project.traffic_light = 'VERMELHO'
     }
-  }
+  } 
 
   return res.status(200).json(projects)
 }
 
 const listArchivedProjects = async (req, res) => {
+  const requester = req.user
+
+  let whereClause = { archived: true }
+
+  if (requester.role === 'ANALISTA') {
+    whereClause = {
+      archived: true,
+      OR: [
+        { requesters: { some: { user_id: requester.id } } },
+        { members: { some: { user_id: requester.id } } }
+      ]
+    }
+  } else if (requester.role === 'GERENTE' || requester.role === 'COORDENADOR') {
+    const user = await prisma.user.findUnique({ where: { id: requester.id } })
+    whereClause = {
+      archived: true,
+      area: { contains: user.area }
+    }
+  }
+
   const projects = await prisma.project.findMany({
-    where: { archived: true },
+    where: whereClause,
     include: {
       owner: { select: { id: true, name: true, email: true } },
       members: { include: { user: { select: { id: true, name: true, email: true } } } }
@@ -104,7 +117,13 @@ const getProjectById = async (req, res) => {
         include: { risks: true, author: { select: { id: true, name: true } } }
       },
       requirements: {
-        include: { author: { select: { id: true, name: true } } }
+        include: {
+          author: { select: { id: true, name: true } },
+          history: {
+            orderBy: { edited_at: 'desc' },
+            include: { editor: { select: { id: true, name: true } } }
+          }
+        }
       },
       costs: true,
     }
@@ -185,6 +204,33 @@ const createProject = async (req, res) => {
       })
     }
   }
+
+  const allLinkedIds = [
+    ...(requester_ids || []),
+    ...(responsible_ids || []),
+    ...(member_ids || [])
+  ]
+
+  for (const user_id of allLinkedIds) {
+    await notifyUserLinkedToProject(project, user_id)
+  }
+
+  const managers = await prisma.user.findMany({
+    where: {
+      status: 'ATIVO',
+      role: { in: ['SUPERINTENDENTE', 'ANALISTA_MASTER'] }
+    }
+  })
+
+  const areaManagers = await prisma.user.findMany({
+    where: {
+      status: 'ATIVO',
+      role: { in: ['GERENTE', 'COORDENADOR'] },
+      area: { in: project.area.split(', ') }
+    }
+  })
+
+  await notifyNewProject(project, [...managers, ...areaManagers])
 
   return res.status(201).json(project)
 }

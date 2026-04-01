@@ -47,9 +47,12 @@ const createRequirement = async (req, res) => {
 
   const isOwner = project.owner_id === requester.id
   const isMember = project.members.some(m => m.user_id === requester.id)
-  const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+  const isResponsible = await prisma.projectRequester.findFirst({
+    where: { project_id, user_id: requester.id, type: 'RESPONSAVEL' }
+  })
+  const isPrivileged = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
 
-  if (!isOwner && !isMember && !isPrivileged) {
+  if (!isOwner && !isMember && !isResponsible && !isPrivileged) {
     return res.status(403).json({ error: 'Sem permissão para criar requisitos neste projeto' })
   }
 
@@ -92,9 +95,12 @@ const updateRequirement = async (req, res) => {
 
   const isOwner = project.owner_id === requester.id
   const isMember = project.members.some(m => m.user_id === requester.id)
-  const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+  const isResponsible = await prisma.projectRequester.findFirst({
+    where: { project_id, user_id: requester.id, type: 'RESPONSAVEL' }
+  })
+  const isPrivileged = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
 
-  if (!isOwner && !isMember && !isPrivileged) {
+  if (!isOwner && !isMember && !isResponsible && !isPrivileged) {
     return res.status(403).json({ error: 'Sem permissão para editar requisitos neste projeto' })
   }
 
@@ -118,7 +124,6 @@ const updateRequirement = async (req, res) => {
       author: { select: { id: true, name: true } },
       history: {
         orderBy: { edited_at: 'desc' },
-        take: 5,
         include: { editor: { select: { id: true, name: true } } }
       }
     }

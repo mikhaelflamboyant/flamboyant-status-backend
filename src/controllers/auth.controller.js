@@ -42,6 +42,16 @@ const register = async (req, res) => {
     data: { email, name, password: hashedPassword, area: area || '' }
   })
 
+  const { notifyPendingUser } = require('../services/notifications.service')
+
+  const approvers = await prisma.user.findMany({
+    where: {
+      status: 'ATIVO',
+      role: { in: ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'] }
+    }
+  })
+  await notifyPendingUser(user, approvers)
+
   return res.status(201).json({
     message: 'Cadastro realizado com sucesso. Aguarde a liberação do seu perfil pelo gerente ou coordenador.',
     user: { id: user.id, email: user.email }
