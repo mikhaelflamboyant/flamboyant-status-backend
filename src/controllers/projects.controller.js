@@ -8,29 +8,28 @@ const {
 const listProjects = async (req, res) => {
   const requester = req.user
 
+  const TI_AREA = 'Tecnologia da Informação'
+  const isFromTI = requester.area === TI_AREA
+
   let whereClause = { archived: false }
 
-  if (requester.role === 'ANALISTA') {
-    whereClause = {
-      archived: false,
-      OR: [
-        {
-          requesters: {
-            some: { user_id: requester.id }
-          }
-        },
-        {
-          members: {
-            some: { user_id: requester.id }
-          }
-        }
-      ]
-    }
-  } else if (requester.role === 'GERENTE' || requester.role === 'COORDENADOR') {
+  if (requester.role === 'ANALISTA_MASTER') {
+    whereClause = { archived: false }
+  } else if ((requester.role === 'GERENTE' || requester.role === 'COORDENADOR') && isFromTI) {
+    whereClause = { archived: false }
+  } else if (['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR'].includes(requester.role)) {
     const user = await prisma.user.findUnique({ where: { id: requester.id } })
     whereClause = {
       archived: false,
       area: { contains: user.area }
+    }
+  } else {
+    whereClause = {
+      archived: false,
+      OR: [
+        { requesters: { some: { user_id: requester.id } } },
+        { members: { some: { user_id: requester.id } } }
+      ]
     }
   }
 
@@ -62,7 +61,7 @@ const listProjects = async (req, res) => {
       })
       project.traffic_light = 'VERMELHO'
     }
-  } 
+  }
 
   return res.status(200).json(projects)
 }
@@ -70,9 +69,23 @@ const listProjects = async (req, res) => {
 const listArchivedProjects = async (req, res) => {
   const requester = req.user
 
+  const TI_AREA = 'Tecnologia da Informação'
+  const isFromTI = requester.area === TI_AREA
+
+  const PRIVILEGED_ROLES = ['ANALISTA_MASTER', 'GERENTE', 'COORDENADOR']
+  const MANAGER_ROLES = ['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR']
+
   let whereClause = { archived: true }
 
-  if (requester.role === 'ANALISTA') {
+  if (PRIVILEGED_ROLES.includes(requester.role) && isFromTI) {
+    whereClause = { archived: true }
+  } else if (MANAGER_ROLES.includes(requester.role)) {
+    const user = await prisma.user.findUnique({ where: { id: requester.id } })
+    whereClause = {
+      archived: true,
+      area: { contains: user.area }
+    }
+  } else {
     whereClause = {
       archived: true,
       OR: [
@@ -80,22 +93,23 @@ const listArchivedProjects = async (req, res) => {
         { members: { some: { user_id: requester.id } } }
       ]
     }
-  } else if (requester.role === 'GERENTE' || requester.role === 'COORDENADOR') {
-    const user = await prisma.user.findUnique({ where: { id: requester.id } })
-    whereClause = {
-      archived: true,
-      area: { contains: user.area }
-    }
   }
 
   const projects = await prisma.project.findMany({
     where: whereClause,
     include: {
+      requesters: {
+        include: {
+          user: { select: { id: true, name: true, area: true } }
+        }
+      },
       owner: { select: { id: true, name: true, email: true } },
-      members: { include: { user: { select: { id: true, name: true, email: true } } } }
+      members: { include: { user: { select: { id: true, name: true, email: true } } } },
+      costs: true,
     },
     orderBy: { archived_at: 'desc' }
   })
+
   return res.status(200).json(projects)
 }
 
@@ -137,11 +151,16 @@ const getProjectById = async (req, res) => {
 }
 
 const createProject = async (req, res) => {
+  const requester = req.user
   const {
     title, area, requester_name, execution_type,
     priority, description, go_live, owner_id, member_ids,
     requester_ids, responsible_ids, costs
   } = req.body
+
+  if (requester.area !== 'Tecnologia da Informação' && requester.role !== 'ANALISTA_MASTER') {
+    return res.status(403).json({ error: 'Apenas o time de TI pode criar projetos.' })
+  }
 
   if (!title || !description || !go_live) {
     return res.status(400).json({ error: 'Campos obrigatórios: título, descrição e go-live.' })
@@ -241,18 +260,22 @@ const updateProject = async (req, res) => {
 
   const project = await prisma.project.findUnique({
     where: { id },
-    include: { members: true }
+    include: { requesters: true }
   })
 
   if (!project) {
     return res.status(404).json({ error: 'Projeto não encontrado' })
   }
 
-  const isOwner = project.owner_id === requester.id
-  const isMember = project.members.some(m => m.user_id === requester.id)
-  const isPrivileged = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+  const isAnalistaMaster = requester.role === 'ANALISTA_MASTER'
+  const isRequester = project.requesters.some(
+    r => r.user_id === requester.id && r.type === 'SOLICITANTE'
+  )
+  const isResponsible = project.requesters.some(
+    r => r.user_id === requester.id && r.type === 'RESPONSAVEL'
+  )
 
-  if (!isOwner && !isMember && !isPrivileged) {
+  if (!isAnalistaMaster && !isRequester && !isResponsible) {
     return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
   }
 
@@ -262,8 +285,6 @@ const updateProject = async (req, res) => {
     budget_actual, go_live, owner_id,
     current_phase, traffic_light, completion_pct
   } = req.body
-
-  const canUpdateSensitiveFields = isPrivileged
 
   const dataToUpdate = {
     ...(title && { title }),
@@ -276,14 +297,14 @@ const updateProject = async (req, res) => {
     ...(budget_actual !== undefined && { budget_actual }),
     ...(go_live && { go_live: new Date(go_live) }),
     ...(owner_id !== undefined && { owner_id }),
-    ...(canUpdateSensitiveFields && current_phase && { current_phase }),
-    ...(canUpdateSensitiveFields && traffic_light && { traffic_light }),
-    ...(canUpdateSensitiveFields && completion_pct !== undefined && { completion_pct }),
+    ...(current_phase && { current_phase }),
+    ...(traffic_light && { traffic_light }),
+    ...(completion_pct !== undefined && { completion_pct }),
   }
 
   const shouldArchive =
-    (canUpdateSensitiveFields && current_phase === 'ENTREGUE') ||
-    (canUpdateSensitiveFields && completion_pct !== undefined && parseInt(completion_pct) === 100)
+    current_phase === 'ENTREGUE' ||
+    (completion_pct !== undefined && parseInt(completion_pct) === 100)
 
   if (shouldArchive) {
     dataToUpdate.archived = true
@@ -312,11 +333,14 @@ const deleteProject = async (req, res) => {
   }
 
   const isAnalistaMaster = requester.role === 'ANALISTA_MASTER'
+  const isRequester = project.requesters.some(
+    r => r.user_id === requester.id && r.type === 'SOLICITANTE'
+  )
   const isResponsible = project.requesters.some(
     r => r.user_id === requester.id && r.type === 'RESPONSAVEL'
   )
 
-  if (!isAnalistaMaster && !isResponsible) {
+  if (!isAnalistaMaster && !isRequester && !isResponsible) {
     return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
   }
 

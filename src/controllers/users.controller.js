@@ -1,6 +1,19 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
+const HIERARCHY = {
+  ANALISTA_MASTER: 7,
+  SUPERINTENDENTE: 6,
+  DIRETOR: 5,
+  GERENTE: 4,
+  COORDENADOR: 3,
+  SUPERVISOR: 2,
+  ANALISTA: 1,
+}
+
+const ALLOWED_ROLES = ['ANALISTA_MASTER', 'SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR', 'ANALISTA']
+const CAN_APPROVE = ['ANALISTA_MASTER', 'SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR']
+
 const listUsers = async (req, res) => {
   const { area } = req.query
 
@@ -34,19 +47,21 @@ const updateUserRole = async (req, res) => {
   const { role } = req.body
   const requester = req.user
 
-  const allowedRoles = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA']
-
-  if (!role || !allowedRoles.includes(role)) {
+  if (!role || !ALLOWED_ROLES.includes(role)) {
     return res.status(400).json({ error: 'Perfil inválido' })
   }
 
-  if (!['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR'].includes(requester.role)) {
+  if (!CAN_APPROVE.includes(requester.role)) {
     return res.status(403).json({ error: 'Sem permissão para alterar perfis' })
   }
 
-  const user = await prisma.user.findUnique({ where: { id } })
-  if (!user) {
+  const target = await prisma.user.findUnique({ where: { id } })
+  if (!target) {
     return res.status(404).json({ error: 'Usuário não encontrado' })
+  }
+
+  if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[role] || 0) && requester.role !== 'ANALISTA_MASTER') {
+    return res.status(403).json({ error: 'Você não pode atribuir um perfil igual ou superior ao seu' })
   }
 
   const updated = await prisma.user.update({
@@ -70,8 +85,7 @@ const approveUser = async (req, res) => {
   const { id } = req.params
   const requester = req.user
 
-  const allowed = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER']
-  if (!allowed.includes(requester.role)) {
+  if (!CAN_APPROVE.includes(requester.role)) {
     return res.status(403).json({ error: 'Sem permissão para aprovar usuários' })
   }
 
@@ -91,8 +105,7 @@ const rejectUser = async (req, res) => {
   const { id } = req.params
   const requester = req.user
 
-  const allowed = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER']
-  if (!allowed.includes(requester.role)) {
+  if (!CAN_APPROVE.includes(requester.role)) {
     return res.status(403).json({ error: 'Sem permissão para recusar usuários' })
   }
 
@@ -112,30 +125,14 @@ const deleteUser = async (req, res) => {
   const { id } = req.params
   const requester = req.user
 
-  const HIERARCHY = {
-    SUPERINTENDENTE: 5,
-    GERENTE: 4,
-    COORDENADOR: 3,
-    ANALISTA_MASTER: 2,
-    ANALISTA: 1,
-  }
-
-  const CAN_DELETE = {
-    SUPERINTENDENTE: ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA'],
-    GERENTE: ['COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA'],
-    COORDENADOR: ['ANALISTA_MASTER', 'ANALISTA'],
-    ANALISTA_MASTER: ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA'],
-    ANALISTA: [],
-  }
-
-  if (!CAN_DELETE[requester.role]?.length) {
+  if (!CAN_APPROVE.includes(requester.role)) {
     return res.status(403).json({ error: 'Sem permissão para excluir usuários' })
   }
 
   const target = await prisma.user.findUnique({ where: { id } })
   if (!target) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-  if (!CAN_DELETE[requester.role].includes(target.role)) {
+  if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[target.role] || 0) && requester.role !== 'ANALISTA_MASTER') {
     return res.status(403).json({ error: 'Você não pode excluir um usuário com perfil igual ou superior ao seu' })
   }
 
