@@ -20,6 +20,7 @@ model User {
   notifications Notification[]
   tasks_created  Task[] @relation("TaskAuthor")
   tasks_assigned Task[] @relation("TaskAssignee")
+  api_tokens ApiToken[]
 
   projects_led      Project[]            @relation("ProjectLeader")
   project_members   ProjectMember[]
@@ -169,4 +170,16 @@ model Task {
   project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   author   User    @relation("TaskAuthor", fields: [author_id], references: [id])
   assignee User?   @relation("TaskAssignee", fields: [assignee_id], references: [id])
+}
+
+model ApiToken {
+  id          String    @id @default(uuid())
+  name        String
+  token       String    @unique
+  created_by  String
+  active      Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  last_used   DateTime?
+
+  creator User @relation(fields: [created_by], references: [id])
 }
