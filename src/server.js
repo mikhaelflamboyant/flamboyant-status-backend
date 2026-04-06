@@ -7,6 +7,9 @@ const PORT = process.env.PORT || 3000
 const notificationsRoutes = require('./routes/notifications.routes')
 app.use('/notifications', notificationsRoutes)
 
+const tasksRoutes = require('./routes/tasks.routes')
+app.use('/projects/:project_id/tasks', tasksRoutes)
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`)
   startWeeklyReminderJob()

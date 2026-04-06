@@ -18,6 +18,8 @@ model User {
   area       String   @default("")
   created_at DateTime @default(now())
   notifications Notification[]
+  tasks_created  Task[] @relation("TaskAuthor")
+  tasks_assigned Task[] @relation("TaskAssignee")
 
   projects_led      Project[]            @relation("ProjectLeader")
   project_members   ProjectMember[]
@@ -45,6 +47,7 @@ model Project {
   archived       Boolean   @default(false)
   archived_at    DateTime?
   created_at     DateTime  @default(now())
+  tasks Task[]
 
   owner_id String?
   owner    User?   @relation("ProjectLeader", fields: [owner_id], references: [id])
@@ -149,4 +152,21 @@ model RequirementHistory {
 
   requirement Requirement @relation(fields: [requirement_id], references: [id], onDelete: Cascade)
   editor      User        @relation(fields: [editor_id], references: [id])
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  project_id  String
+  author_id   String
+  assignee_id String?
+  title       String
+  description String?
+  phase       String?
+  due_date    DateTime?
+  completed   Boolean   @default(false)
+  created_at  DateTime  @default(now())
+
+  project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  author   User    @relation("TaskAuthor", fields: [author_id], references: [id])
+  assignee User?   @relation("TaskAssignee", fields: [assignee_id], references: [id])
 }
