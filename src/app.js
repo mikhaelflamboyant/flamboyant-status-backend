@@ -9,8 +9,17 @@ const requirementsRoutes = require('./routes/requirements.routes')
 
 const app = express()
 
-app.use(cors())
-app.use(express.json())
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}))
+
+app.use(express.json({ strict: false }))
+app.use((req, res, next) => {
+  req.setEncoding('utf8')
+  next()
+})
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Servidor no ar' })

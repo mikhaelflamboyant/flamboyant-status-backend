@@ -2,6 +2,11 @@ require('dotenv').config()
 const app = require('./app')
 const { startWeeklyReminderJob } = require('./jobs/weeklyReminder')
 
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  next()
+})
+
 const PORT = process.env.PORT || 3000
 
 const notificationsRoutes = require('./routes/notifications.routes')
