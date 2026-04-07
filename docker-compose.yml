@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: flamboyant-status-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - SAML_ENTRY_POINT=${SAML_ENTRY_POINT}
+      - SAML_ISSUER=${SAML_ISSUER}
+      - SAML_CALLBACK_URL=${SAML_CALLBACK_URL}
+      - SAML_CERT=${SAML_CERT}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+    env_file:
+      - .env
+
+  frontend:
+    build:
+      context: ../flamboyant-status-frontend
+    container_name: flamboyant-status-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

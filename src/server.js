@@ -9,6 +9,9 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 3000
 
+// const samlRoutes = require('./routes/saml.routes')
+// app.use('/auth/saml', samlRoutes)
+
 const notificationsRoutes = require('./routes/notifications.routes')
 app.use('/notifications', notificationsRoutes)
 

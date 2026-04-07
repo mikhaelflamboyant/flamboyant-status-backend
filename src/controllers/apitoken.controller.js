@@ -62,4 +62,18 @@ const revokeToken = async (req, res) => {
   return res.status(200).json({ message: 'Token revogado com sucesso' })
 }
 
-module.exports = { listTokens, createToken, revokeToken }
+const listAllTokens = async (req, res) => {
+  const HISTORY_ROLES = ['ANALISTA_MASTER', 'GERENTE', 'COORDENADOR']
+  if (!canManageTokens(req.user) || !HISTORY_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Sem permissão' })
+  }
+
+  const tokens = await prisma.apiToken.findMany({
+    include: { creator: { select: { id: true, name: true } } },
+    orderBy: { created_at: 'desc' }
+  })
+
+  return res.status(200).json(tokens)
+}
+
+module.exports = { listTokens, createToken, revokeToken, listAllTokens }
