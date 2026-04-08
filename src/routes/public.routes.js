@@ -5,7 +5,7 @@ const apiTokenMiddleware = require('../middlewares/apitoken.middleware')
 
 router.use(apiTokenMiddleware)
 router.get('/projects', listPublicProjects)
-router.get('/projects/:id', getPublicProject)
 router.get('/projects/archived', listPublicArchivedProjects)
+router.get('/projects/:id', getPublicProject)
 
 module.exports = router
