@@ -12,7 +12,8 @@ const HIERARCHY = {
 }
 
 const ALLOWED_ROLES = ['ANALISTA_MASTER', 'SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR', 'ANALISTA']
-const CAN_APPROVE = ['ANALISTA_MASTER', 'SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR']
+const CAN_APPROVE = ['ANALISTA_MASTER', 'GERENTE', 'COORDENADOR']
+const TI_AREA = 'Tecnologia da Informação'
 
 const listUsers = async (req, res) => {
   try {
@@ -101,7 +102,7 @@ const approveUser = async (req, res) => {
     const { id } = req.params
     const requester = req.user
 
-    if (!CAN_APPROVE.includes(requester.role)) {
+    if (!CAN_APPROVE.includes(requester.role) || requester.area !== TI_AREA) {
       return res.status(403).json({ error: 'Sem permissão para aprovar usuários' })
     }
 
@@ -126,7 +127,7 @@ const rejectUser = async (req, res) => {
     const { id } = req.params
     const requester = req.user
 
-    if (!CAN_APPROVE.includes(requester.role)) {
+    if (!CAN_APPROVE.includes(requester.role) || requester.area !== TI_AREA) {
       return res.status(403).json({ error: 'Sem permissão para recusar usuários' })
     }
 

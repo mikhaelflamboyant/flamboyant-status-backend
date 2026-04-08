@@ -277,7 +277,14 @@ const updateProject = async (req, res) => {
       ...(completion_pct !== undefined && { completion_pct }),
     }
 
-    const shouldArchive = current_phase === 'ENTREGUE' || (completion_pct !== undefined && parseInt(completion_pct) === 100)
+    if (current_phase === 'ENTREGUE') {
+      dataToUpdate.completion_pct = 100
+    }
+
+    const shouldArchive =
+      current_phase === 'ENTREGUE' ||
+      (completion_pct !== undefined && parseInt(completion_pct) === 100)
+
     if (shouldArchive) {
       dataToUpdate.archived = true
       dataToUpdate.archived_at = new Date()
