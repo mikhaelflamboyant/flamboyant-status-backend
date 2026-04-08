@@ -1,3 +1,5 @@
+// SAML desativado — ativar após deploy no servidor
+
 /*
 const jwt = require('jsonwebtoken')
 const { PrismaClient } = require('@prisma/client')
@@ -71,3 +73,5 @@ const samlCallback = async (req, res) => {
 
 module.exports = { samlCallback }
 */
+
+module.exports = {}
