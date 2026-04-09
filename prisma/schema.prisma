@@ -38,6 +38,7 @@ model Project {
   execution_type String    @default("INTERNA")
   priority       Int       @default(3)
   description    String
+  business_unit  String?
   budget_planned Float?
   budget_actual  Float?
   go_live        DateTime

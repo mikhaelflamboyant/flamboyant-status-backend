@@ -148,7 +148,7 @@ const createProject = async (req, res) => {
   try {
     const requester = req.user
     const {
-      title, area, execution_type, priority, description,
+      title, area, business_unit, execution_type, priority, description,
       go_live, owner_id, member_ids, requester_ids, responsible_ids, costs
     } = req.body
 
@@ -167,6 +167,7 @@ const createProject = async (req, res) => {
     const project = await prisma.project.create({
       data: {
         title, area,
+        business_unit: business_unit || null,
         requester_name: '',
         execution_type: execution_type || 'INTERNA',
         priority: priority || 3,
@@ -257,7 +258,7 @@ const updateProject = async (req, res) => {
     }
 
     const {
-      title, area, requester_name, execution_type, priority, description,
+      title, area, business_unit, requester_name, execution_type, priority, description,
       budget_planned, budget_actual, go_live, owner_id, current_phase, traffic_light, completion_pct
     } = req.body
 
@@ -268,6 +269,7 @@ const updateProject = async (req, res) => {
       ...(execution_type && { execution_type }),
       ...(priority && { priority }),
       ...(description && { description }),
+      ...(business_unit !== undefined && { business_unit }),
       ...(budget_planned !== undefined && { budget_planned }),
       ...(budget_actual !== undefined && { budget_actual }),
       ...(go_live && { go_live: new Date(go_live) }),
