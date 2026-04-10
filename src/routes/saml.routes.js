@@ -1,9 +1,3 @@
-// SAML desativado — ativar após deploy no servidor
-// Para ativar:
-// 1. Descomentar este arquivo
-// 2. No server.js, descomentar as linhas marcadas com [SAML]
-
-/*
 const express = require('express')
 const router = express.Router()
 const { passport } = require('../config/saml.config')
@@ -29,6 +23,3 @@ router.post('/callback',
 )
 
 module.exports = router
-*/
-
-module.exports = require('express').Router()

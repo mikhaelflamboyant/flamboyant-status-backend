@@ -1,7 +1,3 @@
-// SAML desativado — ativar após deploy no servidor
-// Para ativar: descomentar tudo e registrar a rota no server.js
-
-/*
 const { Strategy: SamlStrategy } = require('@node-saml/passport-saml')
 const passport = require('passport')
 
@@ -23,6 +19,3 @@ passport.serializeUser((user, done) => done(null, user))
 passport.deserializeUser((user, done) => done(null, user))
 
 module.exports = { passport, samlStrategy }
-*/
-
-module.exports = {}

@@ -29,6 +29,5 @@ app.listen(PORT, () => {
   startWeeklyReminderJob()
 })
 
-// [SAML] Descomentar após deploy no servidor
-// const samlRoutes = require('./routes/saml.routes')
-// app.use('/auth/saml', samlRoutes)
+const samlRoutes = require('./routes/saml.routes')
+app.use('/auth/saml', samlRoutes)
