@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { ldapLogin, ldapSync } = require('../controllers/ldap.controller')
-const { authMiddleware } = require('../middlewares/auth.middleware')
+const authMiddleware = require('../middlewares/auth.middleware')
 const { requireRole } = require('../middlewares/role.middleware')
 
 router.post('/login', ldapLogin)
