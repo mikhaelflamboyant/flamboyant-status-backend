@@ -3,6 +3,7 @@ const prisma = new PrismaClient()
 
 const HIERARCHY = {
   ANALISTA_MASTER: 7,
+  ANALISTA_TESTADOR: 7,
   SUPERINTENDENTE: 6,
   DIRETOR: 5,
   GERENTE: 4,
@@ -11,7 +12,7 @@ const HIERARCHY = {
   ANALISTA: 1,
 }
 
-const ALLOWED_ROLES = ['ANALISTA_MASTER', 'SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR', 'ANALISTA']
+const ALLOWED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR', 'ANALISTA']
 const CAN_APPROVE = ['ANALISTA_MASTER', 'GERENTE', 'COORDENADOR']
 const TI_AREA = 'Tecnologia da Informação'
 
@@ -170,6 +171,7 @@ const deleteUser = async (req, res) => {
       }
     }
 
+    await prisma.apiToken.deleteMany({ where: { created_by: id } })
     await prisma.user.delete({ where: { id } })
     return res.status(200).json({ message: 'Usuário excluído com sucesso' })
   } catch (err) {

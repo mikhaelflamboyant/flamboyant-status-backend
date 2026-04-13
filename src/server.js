@@ -24,6 +24,9 @@ const publicRoutes = require('./routes/public.routes')
 app.use('/api-tokens', apitokenRoutes)
 app.use('/public', publicRoutes)
 
+const ldapRoutes = require('./routes/ldap.routes')
+app.use('/auth/ldap', ldapRoutes)
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`)
   startWeeklyReminderJob()
