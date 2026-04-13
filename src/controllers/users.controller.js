@@ -13,7 +13,7 @@ const HIERARCHY = {
 }
 
 const ALLOWED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR', 'ANALISTA']
-const CAN_APPROVE = ['ANALISTA_MASTER', 'GERENTE', 'COORDENADOR']
+const CAN_APPROVE = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
 const TI_AREA = 'Tecnologia da Informação'
 
 const listUsers = async (req, res) => {
@@ -160,11 +160,11 @@ const deleteUser = async (req, res) => {
     const target = await prisma.user.findUnique({ where: { id } })
     if (!target) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[target.role] || 0) && requester.role !== 'ANALISTA_MASTER') {
+    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[target.role] || 0) && !['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
       return res.status(403).json({ error: 'Você não pode excluir um usuário com perfil igual ou superior ao seu' })
     }
 
-    if (requester.role !== 'ANALISTA_MASTER') {
+    if (!['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
       const requesterUser = await prisma.user.findUnique({ where: { id: requester.id } })
       if (requesterUser.area !== target.area) {
         return res.status(403).json({ error: 'Você só pode excluir usuários da mesma área que a sua' })
@@ -172,8 +172,16 @@ const deleteUser = async (req, res) => {
     }
 
     await prisma.apiToken.deleteMany({ where: { created_by: id } })
+    await prisma.statusUpdate.deleteMany({ where: { author_id: id } })
+    await prisma.task.deleteMany({ where: { author_id: id } })
+    await prisma.task.updateMany({ where: { assignee_id: id }, data: { assignee_id: null } })
+    await prisma.requirement.deleteMany({ where: { author_id: id } })
+    await prisma.requirementHistory.deleteMany({ where: { editor_id: id } })
+    await prisma.notification.deleteMany({ where: { user_id: id } })
+    await prisma.projectRequester.deleteMany({ where: { user_id: id } })
+    await prisma.projectMember.deleteMany({ where: { user_id: id } })
     await prisma.user.delete({ where: { id } })
-    return res.status(200).json({ message: 'Usuário excluído com sucesso' })
+        return res.status(200).json({ message: 'Usuário excluído com sucesso' })
   } catch (err) {
     console.error(err)
     return res.status(500).json({ error: 'Erro ao excluir usuário' })
