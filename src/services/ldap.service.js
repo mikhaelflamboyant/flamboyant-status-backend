@@ -45,4 +45,21 @@ async function authenticateUser(email, password) {
   }
 }
 
-module.exports = { findUserByEmail, authenticateUser }
+async function syncUsersFromAD() {
+  const client = new Client({ url: LDAP_URL, timeout: 5000 })
+  try {
+    await client.bind(`${process.env.LDAP_SERVICE_USER}@grupoflamboyant.com.br`, process.env.LDAP_SERVICE_PASS)
+    
+    const { searchEntries } = await client.search(BASE_DN, {
+      scope: 'sub',
+      filter: `(&(objectClass=user)(memberOf=CN=projetos,${BASE_DN})(mail=*))`,
+      attributes: ['cn', 'mail', 'displayName', 'sAMAccountName'],
+    })
+
+    return searchEntries
+  } finally {
+    await client.unbind()
+  }
+}
+
+module.exports = { findUserByEmail, authenticateUser, syncUsersFromAD }

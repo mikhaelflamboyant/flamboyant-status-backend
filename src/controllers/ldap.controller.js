@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken')
 const { PrismaClient } = require('@prisma/client')
-const { authenticateUser } = require('../services/ldap.service')
+const { authenticateUser, syncUsersFromAD } = require('../services/ldap.service')
 const prisma = new PrismaClient()
 
 const ldapLogin = async (req, res) => {
@@ -54,4 +54,41 @@ const ldapLogin = async (req, res) => {
   }
 }
 
-module.exports = { ldapLogin }
+const ldapSync = async (req, res) => {
+  try {
+    const entries = await syncUsersFromAD()
+    let created = 0
+    let existing = 0
+
+    for (const entry of entries) {
+      const email = entry.mail
+      const name = entry.displayName || entry.cn || email
+      if (!email) continue
+
+      const existing_user = await prisma.user.findUnique({ where: { email: Array.isArray(email) ? email[0] : email } })
+      if (existing_user) {
+        existing++
+        continue
+      }
+
+      await prisma.user.create({
+        data: {
+          email: Array.isArray(email) ? email[0] : email,
+          name: Array.isArray(name) ? name[0] : name,
+          password: '',
+          role: 'ANALISTA',
+          status: 'ATIVO',
+          area: '',
+        }
+      })
+      created++
+    }
+
+    return res.json({ message: `Sincronização concluída. ${created} usuário(s) criado(s), ${existing} já existiam.`, created, existing })
+  } catch (err) {
+    console.error('LDAP sync erro:', err)
+    return res.status(500).json({ error: 'Erro ao sincronizar com o Active Directory.' })
+  }
+}
+
+module.exports = { ldapLogin, ldapSync }
