@@ -56,7 +56,7 @@ const createRequirement = async (req, res) => {
     const isResponsible = await prisma.projectRequester.findFirst({
       where: { project_id, user_id: requester.id, type: 'RESPONSAVEL' }
     })
-    const isPrivileged = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+    const isPrivileged = ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
 
     if (!isOwner && !isMember && !isResponsible && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para criar requisitos neste projeto' })

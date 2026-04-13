@@ -13,7 +13,7 @@ const listProjects = async (req, res) => {
 
     let whereClause = { archived: false }
 
-    if (requester.role === 'ANALISTA_MASTER') {
+    if (requester.role === 'ANALISTA_MASTER' || requester.role === 'ANALISTA_TESTADOR') {
       whereClause = { archived: false }
     } else if ((requester.role === 'GERENTE' || requester.role === 'COORDENADOR') && isFromTI) {
       whereClause = { archived: false }
@@ -68,7 +68,7 @@ const listArchivedProjects = async (req, res) => {
     const requester = req.user
     const TI_AREA = 'Tecnologia da Informação'
     const isFromTI = requester.area === TI_AREA
-    const PRIVILEGED_ROLES = ['ANALISTA_MASTER', 'GERENTE', 'COORDENADOR']
+    const PRIVILEGED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
     const MANAGER_ROLES = ['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR']
 
     let whereClause = { archived: true }
@@ -152,7 +152,7 @@ const createProject = async (req, res) => {
       go_live, owner_id, member_ids, requester_ids, responsible_ids, costs
     } = req.body
 
-    if (requester.area !== 'Tecnologia da Informação' && requester.role !== 'ANALISTA_MASTER') {
+    if (requester.area !== 'Tecnologia da Informação' && !['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
       return res.status(403).json({ error: 'Apenas o time de TI pode criar projetos.' })
     }
 
@@ -215,7 +215,7 @@ const createProject = async (req, res) => {
     }
 
     const managers = await prisma.user.findMany({
-      where: { status: 'ATIVO', role: { in: ['SUPERINTENDENTE', 'ANALISTA_MASTER'] } }
+      where: { status: 'ATIVO', role: { in: ['SUPERINTENDENTE', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR'] } }
     })
 
     const areaManagers = await prisma.user.findMany({
@@ -249,7 +249,7 @@ const updateProject = async (req, res) => {
       return res.status(404).json({ error: 'Projeto não encontrado' })
     }
 
-    const isAnalistaMaster = requester.role === 'ANALISTA_MASTER'
+    const isAnalistaMaster = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
     const isRequester = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
 
@@ -315,7 +315,7 @@ const deleteProject = async (req, res) => {
       return res.status(404).json({ error: 'Projeto não encontrado' })
     }
 
-    const isAnalistaMaster = requester.role === 'ANALISTA_MASTER'
+    const isAnalistaMaster = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
     const isRequester = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
 

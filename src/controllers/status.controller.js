@@ -71,7 +71,7 @@ const createStatusUpdate = async (req, res) => {
 
     const isOwner = project.owner_id === requester.id
     const isMember = project.members.some(m => m.user_id === requester.id)
-    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'SUPERINTENDENTE'].includes(requester.role)
+    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
     if (!isOwner && !isMember && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para atualizar este projeto' })
@@ -90,15 +90,27 @@ const createStatusUpdate = async (req, res) => {
       ...project.members.map(m => m.user_id),
     ].filter(uid => uid !== requester.id)
 
-    const managers = await prisma.user.findMany({
-      where: { status: 'ATIVO', role: { in: ['SUPERINTENDENTE', 'ANALISTA_MASTER'] } }
+    const tiManagers = await prisma.user.findMany({
+      where: {
+        status: 'ATIVO',
+        role: { in: ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'] }
+      }
+    })
+
+    const tiAreaManagers = await prisma.user.findMany({
+      where: {
+        status: 'ATIVO',
+        role: { in: ['GERENTE', 'COORDENADOR', 'SUPERINTENDENTE'] },
+        area: 'Tecnologia da Informação'
+      }
     })
 
     const areaManagers = await prisma.user.findMany({
       where: {
         status: 'ATIVO',
-        role: { in: ['GERENTE', 'COORDENADOR'] },
-        area: { in: project.area.split(', ') }
+        role: { in: ['GERENTE', 'COORDENADOR', 'SUPERINTENDENTE'] },
+        area: { in: project.area.split(', ') },
+        NOT: { area: 'Tecnologia da Informação' }
       }
     })
 
@@ -107,7 +119,7 @@ const createStatusUpdate = async (req, res) => {
     })
 
     const allToNotify = [
-      ...linkedUsers, ...managers, ...areaManagers,
+      ...linkedUsers, ...tiManagers, ...tiAreaManagers, ...areaManagers,
     ].filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i)
 
     await notifyNewStatus(project, update, allToNotify)
