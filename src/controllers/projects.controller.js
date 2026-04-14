@@ -260,7 +260,7 @@ const updateProject = async (req, res) => {
 
     const project = await prisma.project.findUnique({
       where: { id },
-      include: { requesters: true }
+      include: { requesters: true, members: true, costs: true }
     })
 
     if (!project) {
@@ -276,20 +276,19 @@ const updateProject = async (req, res) => {
     }
 
     const {
-      title, area, business_unit, requester_name, execution_type, priority, description,
-      budget_planned, budget_actual, go_live, owner_id, current_phase, traffic_light, completion_pct
+      title, area, business_unit, execution_type, priority, description,
+      go_live, owner_id, current_phase, traffic_light, completion_pct,
+      requester_ids, requester_names, responsible_ids, responsible_names,
+      member_ids, member_names, costs
     } = req.body
 
     const dataToUpdate = {
       ...(title && { title }),
       ...(area && { area }),
-      ...(requester_name && { requester_name }),
       ...(execution_type && { execution_type }),
       ...(priority && { priority }),
       ...(description && { description }),
       ...(business_unit !== undefined && { business_unit }),
-      ...(budget_planned !== undefined && { budget_planned }),
-      ...(budget_actual !== undefined && { budget_actual }),
       ...(go_live && { go_live: new Date(go_live) }),
       ...(owner_id !== undefined && { owner_id }),
       ...(current_phase && { current_phase }),
@@ -311,6 +310,59 @@ const updateProject = async (req, res) => {
     }
 
     const updated = await prisma.project.update({ where: { id }, data: dataToUpdate })
+
+    // Atualiza solicitantes se enviados
+    if (requester_ids !== undefined || requester_names !== undefined) {
+      await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'SOLICITANTE' } })
+      for (const user_id of (requester_ids || [])) {
+        await prisma.projectRequester.create({ data: { project: { connect: { id } }, user: { connect: { id: user_id } }, type: 'SOLICITANTE' } })
+      }
+      for (const person of (requester_names || [])) {
+        await prisma.projectRequester.create({ data: { project: { connect: { id } }, manual_name: person.name, manual_area: person.area, type: 'SOLICITANTE' } })
+      }
+    }
+
+    // Atualiza responsáveis se enviados
+    if (responsible_ids !== undefined || responsible_names !== undefined) {
+      await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'RESPONSAVEL' } })
+      for (const user_id of (responsible_ids || [])) {
+        await prisma.projectRequester.create({ data: { project: { connect: { id } }, user: { connect: { id: user_id } }, type: 'RESPONSAVEL' } })
+      }
+      for (const person of (responsible_names || [])) {
+        await prisma.projectRequester.create({ data: { project: { connect: { id } }, manual_name: person.name, manual_area: person.area, type: 'RESPONSAVEL' } })
+      }
+      // Atualiza owner para primeiro responsável com user_id real
+      if (requester_ids?.length > 0 || responsible_ids?.length > 0) {
+        const firstResponsible = (responsible_ids || [])[0] || null
+        await prisma.project.update({ where: { id }, data: { owner_id: firstResponsible || null } })
+      }
+    }
+
+    // Atualiza membros se enviados
+    if (member_ids !== undefined || member_names !== undefined) {
+      await prisma.projectMember.deleteMany({ where: { project_id: id } })
+      for (const user_id of (member_ids || [])) {
+        await prisma.projectMember.create({ data: { project: { connect: { id } }, user: { connect: { id: user_id } } } })
+      }
+      for (const person of (member_names || [])) {
+        await prisma.projectMember.create({ data: { project: { connect: { id } }, manual_name: person.name, manual_area: person.area } })
+      }
+    }
+
+    // Atualiza custos se enviados
+    if (costs !== undefined) {
+      await prisma.projectCost.deleteMany({ where: { project_id: id } })
+      for (const cost of costs) {
+        await prisma.projectCost.create({
+          data: {
+            project_id: id,
+            name: cost.name,
+            budget_planned: parseFloat(cost.budget_planned),
+            budget_actual: cost.budget_actual ? parseFloat(cost.budget_actual) : null,
+          }
+        })
+      }
+    }
 
     return res.status(200).json(updated)
   } catch (err) {

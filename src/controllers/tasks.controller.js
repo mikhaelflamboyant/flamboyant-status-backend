@@ -4,9 +4,9 @@ const prisma = new PrismaClient()
 const TI_AREA = 'Tecnologia da Informação'
 
 const canManageTasks = async (requester, projectId) => {
-  if (requester.area !== TI_AREA) return false
-  if (requester.role === 'ANALISTA_MASTER') return true
-  if (requester.role === 'GERENTE' || requester.role === 'COORDENADOR') return true
+  const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+  if (!isFromTI) return false
+  if (['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR'].includes(requester.role)) return true
   if (requester.role === 'ANALISTA') {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -25,7 +25,8 @@ const listTasks = async (req, res) => {
     const { project_id } = req.params
     const requester = req.user
 
-    if (requester.area !== TI_AREA) {
+    const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+    if (!isFromTI) {
       return res.status(403).json({ error: 'Sem permissão para visualizar tarefas' })
     }
 
