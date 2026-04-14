@@ -47,7 +47,13 @@ const register = async (req, res) => {
     const approvers = await prisma.user.findMany({
       where: {
         status: 'ATIVO',
-        role: { in: ['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'] }
+        OR: [
+          { role: { in: ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'] } },
+          {
+            role: { in: ['GERENTE', 'COORDENADOR'] },
+            area: 'Tecnologia da Informação'
+          }
+        ]
       }
     })
 

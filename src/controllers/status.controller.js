@@ -146,7 +146,7 @@ const updateStatusUpdate = async (req, res) => {
     }
 
     const isAuthor = update.author_id === requester.id
-    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'SUPERINTENDENTE'].includes(requester.role)
+    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
     if (!isAuthor && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para editar esta atualização' })

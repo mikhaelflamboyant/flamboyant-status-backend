@@ -180,19 +180,37 @@ const createProject = async (req, res) => {
 
     if (requester_ids?.length > 0) {
       for (const user_id of requester_ids) {
-        await prisma.projectRequester.create({ data: { project_id: project.id, user_id, type: 'SOLICITANTE' } })
+        await prisma.projectRequester.create({ data: { project: { connect: { id: project.id } }, user: { connect: { id: user_id } }, type: 'SOLICITANTE' } })
+      }
+    }
+
+    if (req.body.requester_names?.length > 0) {
+      for (const person of req.body.requester_names) {
+        await prisma.projectRequester.create({ data: { project: { connect: { id: project.id } }, manual_name: person.name, manual_area: person.area, type: 'SOLICITANTE' } })
       }
     }
 
     if (responsible_ids?.length > 0) {
       for (const user_id of responsible_ids) {
-        await prisma.projectRequester.create({ data: { project_id: project.id, user_id, type: 'RESPONSAVEL' } })
+        await prisma.projectRequester.create({ data: { project: { connect: { id: project.id } }, user: { connect: { id: user_id } }, type: 'RESPONSAVEL' } })
+      }
+    }
+
+    if (req.body.responsible_names?.length > 0) {
+      for (const person of req.body.responsible_names) {
+        await prisma.projectRequester.create({ data: { project: { connect: { id: project.id } }, manual_name: person.name, manual_area: person.area, type: 'RESPONSAVEL' } })
       }
     }
 
     if (member_ids?.length > 0) {
       for (const user_id of member_ids) {
-        await prisma.projectMember.create({ data: { project_id: project.id, user_id } })
+        await prisma.projectMember.create({ data: { project: { connect: { id: project.id } }, user: { connect: { id: user_id } } } })
+      }
+    }
+
+    if (req.body.member_names?.length > 0) {
+      for (const person of req.body.member_names) {
+        await prisma.projectMember.create({ data: { project: { connect: { id: project.id } }, manual_name: person.name, manual_area: person.area } })
       }
     }
 

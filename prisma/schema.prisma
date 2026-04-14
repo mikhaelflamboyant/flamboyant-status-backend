@@ -62,26 +62,26 @@ model Project {
 model ProjectMember {
   id          String   @id @default(uuid())
   project_id  String
-  user_id     String
+  user_id     String?
+  manual_name String?
+  manual_area String?
   assigned_at DateTime @default(now())
 
   project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([project_id, user_id])
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model ProjectRequester {
   id          String   @id @default(uuid())
   project_id  String
-  user_id     String
+  user_id     String?
+  manual_name String?
+  manual_area String?
   type        String   @default("SOLICITANTE")
   assigned_at DateTime @default(now())
 
   project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([project_id, user_id, type])
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model ProjectCost {
