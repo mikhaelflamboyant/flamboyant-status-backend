@@ -21,6 +21,7 @@ model User {
   tasks_created  Task[] @relation("TaskAuthor")
   tasks_assigned Task[] @relation("TaskAssignee")
   api_tokens ApiToken[]
+  go_live_changes GoLiveHistory[]
 
   projects_led      Project[]            @relation("ProjectLeader")
   project_members   ProjectMember[]
@@ -50,6 +51,7 @@ model Project {
   archived_at    DateTime?
   created_at     DateTime  @default(now())
   tasks Task[]
+  go_live_history GoLiveHistory[]
 
   owner_id String?
   owner    User?   @relation("ProjectLeader", fields: [owner_id], references: [id])
@@ -183,4 +185,16 @@ model ApiToken {
   last_used   DateTime?
 
   creator User @relation(fields: [created_by], references: [id])
+}
+
+model GoLiveHistory {
+  id           String   @id @default(uuid())
+  project_id   String
+  changed_by   String
+  previous_date DateTime
+  new_date     DateTime
+  changed_at   DateTime @default(now())
+
+  project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  changed_by_user User @relation(fields: [changed_by], references: [id])
 }

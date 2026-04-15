@@ -129,6 +129,10 @@ const getProjectById = async (req, res) => {
             }
           }
         },
+        go_live_history: {
+          orderBy: { changed_at: 'desc' },
+          include: { changed_by_user: { select: { id: true, name: true } } }
+        },
         costs: true,
       }
     })
@@ -310,6 +314,17 @@ const updateProject = async (req, res) => {
     }
 
     const updated = await prisma.project.update({ where: { id }, data: dataToUpdate })
+
+    if (go_live && new Date(go_live).toISOString() !== new Date(project.go_live).toISOString()) {
+      await prisma.goLiveHistory.create({
+        data: {
+          project_id: id,
+          changed_by: requester.id,
+          previous_date: project.go_live,
+          new_date: new Date(go_live),
+        }
+      })
+    }
 
     // Atualiza solicitantes se enviados
     if (requester_ids !== undefined || requester_names !== undefined) {
