@@ -88,7 +88,7 @@ const createStatusUpdate = async (req, res) => {
     const linkedUserIds = [
       ...project.requesters.map(r => r.user_id),
       ...project.members.map(m => m.user_id),
-    ].filter(uid => uid !== requester.id)
+    ].filter(uid => uid && uid !== requester.id)
 
     const tiManagers = await prisma.user.findMany({
       where: {
