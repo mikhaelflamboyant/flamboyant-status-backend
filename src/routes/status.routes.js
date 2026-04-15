@@ -4,7 +4,8 @@ const {
   listStatusUpdates,
   getStatusUpdateById,
   createStatusUpdate,
-  updateStatusUpdate
+  updateStatusUpdate,
+  deleteStatusUpdate
 } = require('../controllers/status.controller')
 const authMiddleware = require('../middlewares/auth.middleware')
 
@@ -14,5 +15,6 @@ router.get('/', listStatusUpdates)
 router.get('/:id', getStatusUpdateById)
 router.post('/', createStatusUpdate)
 router.patch('/:id', updateStatusUpdate)
+router.delete('/:id', deleteStatusUpdate)
 
 module.exports = router

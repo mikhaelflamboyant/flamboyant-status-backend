@@ -172,4 +172,27 @@ const updateStatusUpdate = async (req, res) => {
   }
 }
 
-module.exports = { listStatusUpdates, getStatusUpdateById, createStatusUpdate, updateStatusUpdate }
+const deleteStatusUpdate = async (req, res) => {
+  try {
+    const { project_id, id } = req.params
+    const requester = req.user
+
+    const update = await prisma.statusUpdate.findFirst({ where: { id, project_id } })
+    if (!update) return res.status(404).json({ error: 'Atualização não encontrada' })
+
+    const isAuthor = update.author_id === requester.id
+    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
+
+    if (!isAuthor && !isPrivileged) {
+      return res.status(403).json({ error: 'Sem permissão para excluir esta atualização' })
+    }
+
+    await prisma.statusUpdate.delete({ where: { id } })
+    return res.status(200).json({ message: 'Status report excluído com sucesso' })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Erro ao excluir status report' })
+  }
+}
+
+module.exports = { listStatusUpdates, getStatusUpdateById, createStatusUpdate, updateStatusUpdate, deleteStatusUpdate }
