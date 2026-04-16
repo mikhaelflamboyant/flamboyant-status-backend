@@ -42,7 +42,7 @@ model Project {
   business_unit  String?
   budget_planned Float?
   budget_actual  Float?
-  go_live        DateTime
+  go_live        DateTime?
   costs ProjectCost[]
   current_phase  String    @default("RECEBIDA")
   traffic_light  String    @default("VERDE")

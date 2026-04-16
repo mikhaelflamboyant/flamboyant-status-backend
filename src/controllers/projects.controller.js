@@ -160,8 +160,8 @@ const createProject = async (req, res) => {
       return res.status(403).json({ error: 'Apenas o time de TI pode criar projetos.' })
     }
 
-    if (!title || !description || !go_live) {
-      return res.status(400).json({ error: 'Campos obrigatórios: título, descrição e go-live.' })
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Campos obrigatórios: título e descrição.' })
     }
 
     const goLiveDate = new Date(go_live)
@@ -176,7 +176,7 @@ const createProject = async (req, res) => {
         execution_type: execution_type || 'INTERNA',
         priority: priority || 3,
         description,
-        go_live: new Date(go_live),
+        go_live: go_live ? new Date(go_live) : null,
         owner_id: owner_id || null,
         traffic_light: autoTrafficLight
       }
