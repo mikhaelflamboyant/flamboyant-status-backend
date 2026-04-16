@@ -111,13 +111,14 @@ model Notification {
 }
 
 model StatusUpdate {
-  id          String   @id @default(uuid())
-  project_id  String
-  author_id   String
-  description String
-  highlights  String
-  next_steps  String
-  created_at  DateTime @default(now())
+  id               String   @id @default(uuid())
+  project_id       String
+  author_id        String
+  reported_by_name String?
+  description      String
+  highlights       String   @default("")
+  next_steps       String   @default("")
+  created_at       DateTime @default(now())
 
   project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   author  User    @relation(fields: [author_id], references: [id])

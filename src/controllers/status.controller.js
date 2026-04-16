@@ -53,11 +53,14 @@ const getStatusUpdateById = async (req, res) => {
 const createStatusUpdate = async (req, res) => {
   try {
     const { project_id } = req.params
-    const { description, highlights, next_steps } = req.body
+    const { description, highlights, next_steps, reported_by_name } = req.body
     const requester = req.user
 
-    if (!description || !highlights || !next_steps) {
-      return res.status(400).json({ error: 'Campos obrigatórios: description, highlights, next_steps' })
+    if (!description) {
+      return res.status(400).json({ error: 'Campo obrigatório: description' })
+    }
+    if (!highlights && !next_steps) {
+      return res.status(400).json({ error: 'Preencha pelo menos destaques ou próximos passos' })
     }
 
     const project = await prisma.project.findUnique({
@@ -78,7 +81,7 @@ const createStatusUpdate = async (req, res) => {
     }
 
     const update = await prisma.statusUpdate.create({
-      data: { project_id, author_id: requester.id, description, highlights, next_steps },
+      data: { project_id, author_id: requester.id, description, highlights: highlights || '', next_steps: next_steps || '', reported_by_name: reported_by_name || null },
       include: {
         author: { select: { id: true, name: true } },
         risks: true
@@ -134,7 +137,7 @@ const createStatusUpdate = async (req, res) => {
 const updateStatusUpdate = async (req, res) => {
   try {
     const { project_id, id } = req.params
-    const { description, highlights, next_steps } = req.body
+    const { description, highlights, next_steps, reported_by_name } = req.body
     const requester = req.user
 
     const update = await prisma.statusUpdate.findFirst({
@@ -156,8 +159,9 @@ const updateStatusUpdate = async (req, res) => {
       where: { id },
       data: {
         ...(description && { description }),
-        ...(highlights && { highlights }),
-        ...(next_steps && { next_steps })
+        ...(highlights !== undefined && { highlights }),
+        ...(next_steps !== undefined && { next_steps }),
+        ...(reported_by_name !== undefined && { reported_by_name }),
       },
       include: {
         author: { select: { id: true, name: true } },
