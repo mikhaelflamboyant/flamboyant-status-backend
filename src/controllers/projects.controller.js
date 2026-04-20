@@ -177,6 +177,7 @@ const createProject = async (req, res) => {
         priority: priority || 3,
         description,
         go_live: go_live ? new Date(go_live) : null,
+        start_date: req.body.start_date ? new Date(req.body.start_date) : null,
         owner_id: owner_id || null,
         traffic_light: autoTrafficLight
       }
@@ -294,6 +295,7 @@ const updateProject = async (req, res) => {
       ...(description && { description }),
       ...(business_unit !== undefined && { business_unit }),
       ...(go_live && { go_live: new Date(go_live) }),
+      ...(req.body.start_date !== undefined && { start_date: req.body.start_date ? new Date(req.body.start_date) : null }),
       ...(owner_id !== undefined && { owner_id }),
       ...(current_phase && { current_phase }),
       ...(traffic_light && { traffic_light }),
