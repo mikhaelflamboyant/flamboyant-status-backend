@@ -127,22 +127,22 @@ const updateTask = async (req, res) => {
       }
     })
 
+    if (end_date !== undefined && String(end_date) !== String(originalTask.end_date)) {
+      await prisma.taskDateHistory.create({
+        data: {
+          task_id: id,
+          changed_by: requester.id,
+          previous_date: originalTask.end_date || null,
+          new_date: end_date ? new Date(end_date) : null,
+        }
+      })
+    }
+
     return res.status(200).json(updated)
   } catch (err) {
     console.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar tarefa' })
   }
-}
-
-if (end_date !== undefined && String(end_date) !== String(originalTask.end_date)) {
-  await prisma.taskDateHistory.create({
-    data: {
-      task_id: id,
-      changed_by: requester.id,
-      previous_date: originalTask.end_date || null,
-      new_date: end_date ? new Date(end_date) : null,
-    }
-  })
 }
 
 const completeTask = async (req, res) => {
