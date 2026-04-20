@@ -30,6 +30,22 @@ const listProjects = async (req, res) => {
       }
     }
 
+    const { filtro } = req.query
+
+    if (filtro === 'sem_golive') {
+      whereClause = { ...whereClause, go_live: null }
+    } else if (filtro === 'sem_status') {
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      const recentStatus = await prisma.statusUpdate.findMany({
+        where: { created_at: { gte: sevenDaysAgo } },
+        select: { project_id: true },
+        distinct: ['project_id'],
+      })
+      const recentIds = recentStatus.map(s => s.project_id)
+      whereClause = { ...whereClause, id: { notIn: recentIds } }
+    }
+
     const projects = await prisma.project.findMany({
       where: whereClause,
       include: {
@@ -85,6 +101,18 @@ const listArchivedProjects = async (req, res) => {
           { requesters: { some: { user_id: requester.id } } },
           { members: { some: { user_id: requester.id } } }
         ]
+      }
+    }
+
+    const { filtro } = req.query
+
+    if (filtro === 'entregues_mes') {
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+      whereClause = {
+        ...whereClause,
+        archived_at: { gte: startOfMonth }
       }
     }
 
