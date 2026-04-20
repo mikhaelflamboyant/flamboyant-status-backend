@@ -20,6 +20,7 @@ model User {
   notifications Notification[]
   tasks_created  Task[] @relation("TaskAuthor")
   tasks_assigned Task[] @relation("TaskAssignee")
+  task_date_changes TaskDateHistory[]
   api_tokens ApiToken[]
   go_live_changes GoLiveHistory[]
 
@@ -173,6 +174,7 @@ model Task {
   end_date    DateTime?
   completed   Boolean   @default(false)
   created_at  DateTime  @default(now())
+  date_history   TaskDateHistory[]
 
   project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   author   User    @relation("TaskAuthor", fields: [author_id], references: [id])
@@ -200,5 +202,17 @@ model GoLiveHistory {
   changed_at   DateTime @default(now())
 
   project    Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  changed_by_user User @relation(fields: [changed_by], references: [id])
+}
+
+model TaskDateHistory {
+  id            String   @id @default(uuid())
+  task_id       String
+  changed_by    String
+  previous_date DateTime?
+  new_date      DateTime?
+  changed_at    DateTime @default(now())
+
+  task       Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
   changed_by_user User @relation(fields: [changed_by], references: [id])
 }

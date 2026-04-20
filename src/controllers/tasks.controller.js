@@ -34,7 +34,11 @@ const listTasks = async (req, res) => {
       where: { project_id },
       include: {
         author: { select: { id: true, name: true } },
-        assignee: { select: { id: true, name: true } }
+        assignee: { select: { id: true, name: true } },
+        date_history: {
+          orderBy: { changed_at: 'desc' },
+          include: { changed_by_user: { select: { id: true, name: true } } }
+        }
       },
       orderBy: { created_at: 'desc' }
     })
@@ -104,6 +108,8 @@ const updateTask = async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para editar esta tarefa' })
     }
 
+    const originalTask = await prisma.task.findUnique({ where: { id } })
+
     const updated = await prisma.task.update({
       where: { id },
       data: {
@@ -126,6 +132,17 @@ const updateTask = async (req, res) => {
     console.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar tarefa' })
   }
+}
+
+if (end_date !== undefined && String(end_date) !== String(originalTask.end_date)) {
+  await prisma.taskDateHistory.create({
+    data: {
+      task_id: id,
+      changed_by: requester.id,
+      previous_date: originalTask.end_date || null,
+      new_date: end_date ? new Date(end_date) : null,
+    }
+  })
 }
 
 const completeTask = async (req, res) => {
