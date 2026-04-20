@@ -169,6 +169,8 @@ model Task {
   description String?
   phase       String?
   due_date    DateTime?
+  start_date  DateTime?
+  end_date    DateTime?
   completed   Boolean   @default(false)
   created_at  DateTime  @default(now())
 
