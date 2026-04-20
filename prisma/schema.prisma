@@ -21,6 +21,7 @@ model User {
   tasks_created  Task[] @relation("TaskAuthor")
   tasks_assigned Task[] @relation("TaskAssignee")
   task_date_changes TaskDateHistory[]
+  scope_items_created ScopeItem[]
   api_tokens ApiToken[]
   go_live_changes GoLiveHistory[]
 
@@ -54,6 +55,7 @@ model Project {
   created_at     DateTime  @default(now())
   tasks Task[]
   go_live_history GoLiveHistory[]
+  scope_items    ScopeItem[]
 
   owner_id String?
   owner    User?   @relation("ProjectLeader", fields: [owner_id], references: [id])
@@ -175,6 +177,8 @@ model Task {
   completed   Boolean   @default(false)
   created_at  DateTime  @default(now())
   date_history   TaskDateHistory[]
+  scope_item_id  String?
+scope_item     ScopeItem? @relation(fields: [scope_item_id], references: [id])
 
   project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   author   User    @relation("TaskAuthor", fields: [author_id], references: [id])
@@ -215,4 +219,30 @@ model TaskDateHistory {
 
   task       Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
   changed_by_user User @relation(fields: [changed_by], references: [id])
+}
+
+model ScopeItem {
+  id                    String    @id @default(uuid())
+  project_id            String
+  title                 String
+  description           String?
+  phase                 String?
+  start_date            DateTime?
+  end_date              DateTime?
+  completion_pct        Int       @default(0)
+  status                String    @default("RASCUNHO")
+  pending_title         String?
+  pending_description   String?
+  pending_phase         String?
+  pending_start_date    DateTime?
+  pending_end_date      DateTime?
+  pending_completion_pct Int?
+  pending_action        String?
+  created_by            String
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  project      Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  created_by_user User @relation(fields: [created_by], references: [id])
 }

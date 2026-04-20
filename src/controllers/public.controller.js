@@ -10,6 +10,10 @@ const listPublicProjects = async (req, res) => {
           include: { user: { select: { id: true, name: true, area: true } } }
         },
         costs: true,
+        scope_items: {
+          orderBy: { created_at: 'asc' },
+          include: { tasks: { select: { id: true, completed: true } } }
+        },
         status_updates: {
           orderBy: { created_at: 'desc' },
           take: 1,
