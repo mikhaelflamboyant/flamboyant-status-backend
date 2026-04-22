@@ -11,18 +11,19 @@ const listProjects = async (req, res) => {
     const TI_AREA = 'Tecnologia da Informação'
     const isFromTI = requester.area === TI_AREA
 
-    let whereClause = { archived: false }
+    let whereClause = { archived: false, origin: 'NORMAL' }
 
     if (requester.role === 'ANALISTA_MASTER' || requester.role === 'ANALISTA_TESTADOR') {
-      whereClause = { archived: false }
+      whereClause = { archived: false, origin: 'NORMAL' }
     } else if ((requester.role === 'GERENTE' || requester.role === 'COORDENADOR') && isFromTI) {
-      whereClause = { archived: false }
+      whereClause = { archived: false, origin: 'NORMAL' }
     } else if (['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR'].includes(requester.role)) {
       const user = await prisma.user.findUnique({ where: { id: requester.id } })
-      whereClause = { archived: false, area: { contains: user.area } }
+      whereClause = { archived: false, origin: 'NORMAL', area: { contains: user.area } }
     } else {
       whereClause = {
         archived: false,
+        origin: 'NORMAL',
         OR: [
           { requesters: { some: { user_id: requester.id } } },
           { members: { some: { user_id: requester.id } } }
@@ -484,8 +485,80 @@ const archiveExpiredProjects = async () => {
   })
 }
 
+const approveFreshservice = async (req, res) => {
+  try {
+    const { id } = req.params
+    const {
+      area,
+      business_unit,
+      priority,
+      go_live,
+      go_live_undefined,
+      responsible_id,
+      responsible_name,
+      responsible_area,
+      execution_type,
+    } = req.body
+
+    const project = await prisma.project.update({
+      where: { id },
+      data: {
+        area,
+        business_unit,
+        priority: parseInt(priority),
+        go_live: go_live_undefined ? null : (go_live ? new Date(go_live) : null),
+        execution_type: execution_type || 'INTERNA',
+        origin: 'NORMAL',
+      }
+    })
+
+    // Vincular responsável
+    if (responsible_id) {
+      await prisma.projectRequester.create({
+        data: { project_id: id, user_id: responsible_id, type: 'RESPONSAVEL' }
+      })
+    } else if (responsible_name) {
+      await prisma.projectRequester.create({
+        data: { project_id: id, manual_name: responsible_name, manual_area: responsible_area || '', type: 'RESPONSAVEL' }
+      })
+    }
+
+    return res.status(200).json(project)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Erro ao aprovar projeto' })
+  }
+}
+
+const rejectFreshservice = async (req, res) => {
+  try {
+    const { id } = req.params
+    await prisma.project.delete({ where: { id } })
+    return res.status(200).json({ message: 'Solicitação rejeitada e removida' })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Erro ao rejeitar projeto' })
+  }
+}
+
+const listFreshserviceRequests = async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      where: { origin: 'FRESHSERVICE', archived: false },
+      include: {
+        requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
+      },
+      orderBy: { created_at: 'desc' }
+    })
+    return res.status(200).json(projects)
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao listar solicitações' })
+  }
+}
+
 module.exports = {
   listProjects, listArchivedProjects, getProjectById,
   createProject, updateProject, deleteProject,
-  assignMember, archiveExpiredProjects
+  assignMember, archiveExpiredProjects,
+  approveFreshservice, rejectFreshservice, listFreshserviceRequests
 }

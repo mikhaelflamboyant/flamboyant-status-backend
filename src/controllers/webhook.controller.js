@@ -17,15 +17,17 @@ const freshserviceWebhook = async (req, res) => {
     const project = await prisma.project.create({
       data: {
         title,
-        area: 'Tecnologia da Informação',
+        area: '',
         requester_name: payload.requester?.name || '',
         execution_type: 'INTERNA',
         priority: 3,
-        description: `${description}\n\n---\nChamado FreshService #${ticketId}`,
-        go_live: goLive,
+        description,
+        go_live: null,
         traffic_light: 'VERDE',
         current_phase: 'RECEBIDA',
         completion_pct: 0,
+        origin: 'FRESHSERVICE',
+        freshservice_ticket_id: ticketId ? String(ticketId) : null,
       }
     })
 
