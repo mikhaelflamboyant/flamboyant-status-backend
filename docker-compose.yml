@@ -27,5 +27,7 @@ services:
     restart: always
     ports:
       - "80:80"
+      - "4443:4443"
+      - "4444:4444"
     depends_on:
       - backend
