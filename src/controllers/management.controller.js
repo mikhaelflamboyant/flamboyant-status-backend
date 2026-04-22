@@ -18,7 +18,7 @@ const getDashboard = async (req, res) => {
 
     const [activeProjects, archivedProjects] = await Promise.all([
       prisma.project.findMany({
-        where: { archived: false },
+        where: { archived: false, origin: 'NORMAL' },
         select: {
           id: true, traffic_light: true, current_phase: true,
           business_unit: true, area: true, completion_pct: true,
@@ -89,11 +89,11 @@ const getDashboard = async (req, res) => {
 
     const allActiveUserIds = new Set()
     const projectMembers = await prisma.projectMember.findMany({
-      where: { project: { archived: false } },
+      where: { project: { archived: false, origin: 'NORMAL' } },
       select: { user_id: true }
     })
     const projectRequesters = await prisma.projectRequester.findMany({
-      where: { project: { archived: false } },
+      where: { project: { archived: false, origin: 'NORMAL' } },
       select: { user_id: true }
     })
     projectMembers.forEach(m => m.user_id && allActiveUserIds.add(m.user_id))
