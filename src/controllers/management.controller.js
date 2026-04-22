@@ -56,7 +56,8 @@ const getDashboard = async (req, res) => {
       : 0
 
     const overdue = activeProjects.filter(p =>
-      p.go_live && new Date(p.go_live) < new Date() && p.traffic_light === 'VERMELHO'
+      p.traffic_light === 'VERMELHO' ||
+      (p.go_live && new Date(p.go_live) < new Date())
     ).length
 
     const sevenDaysAgo = new Date()
