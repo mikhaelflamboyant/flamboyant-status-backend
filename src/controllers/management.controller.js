@@ -93,7 +93,7 @@ const getDashboard = async (req, res) => {
       select: { user_id: true }
     })
     const projectRequesters = await prisma.projectRequester.findMany({
-      where: { project: { archived: false, origin: 'NORMAL' } },
+      where: { project: { archived: false } },
       select: { user_id: true }
     })
     projectMembers.forEach(m => m.user_id && allActiveUserIds.add(m.user_id))
