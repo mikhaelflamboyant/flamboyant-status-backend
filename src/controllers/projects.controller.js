@@ -231,7 +231,8 @@ const createProject = async (req, res) => {
         go_live: go_live ? new Date(go_live) : null,
         start_date: req.body.start_date ? new Date(req.body.start_date) : null,
         owner_id: owner_id || null,
-        traffic_light: autoTrafficLight
+        traffic_light: autoTrafficLight,
+        legacy: req.body.legacy === true || req.body.legacy === 'true',
       }
     })
 
@@ -339,7 +340,7 @@ const updateProject = async (req, res) => {
       member_ids, member_names, costs
     } = req.body
 
-    if (current_phase && current_phase !== project.current_phase) {
+    if (current_phase && current_phase !== project.current_phase && !project.legacy) {
       const scopeItems = await prisma.scopeItem.findMany({
         where: { project_id: id, status: 'APROVADO' }
       })
