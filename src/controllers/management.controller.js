@@ -87,6 +87,57 @@ const getDashboard = async (req, res) => {
       }
     })
 
+    const byLevel = await prisma.project.groupBy({
+      by: ['level'],
+      where: { archived: false, origin: 'NORMAL' },
+      _count: { id: true }
+    })
+    const levelMap = { A: 0, B: 0, C: 0, D: 0, null: 0 }
+    for (const l of byLevel) {
+      const key = l.level || 'null'
+      if (key in levelMap) levelMap[key] = l._count.id
+    }
+
+    const deliveredProjects = await prisma.project.findMany({
+      where: { archived: true, archived_at: { not: null }, origin: 'NORMAL' },
+      select: { created_at: true, archived_at: true, business_unit: true }
+    })
+    const unitTimes = {}
+    for (const p of deliveredProjects) {
+      const unit = p.business_unit || 'Sem unidade'
+      const days = Math.round((new Date(p.archived_at) - new Date(p.created_at)) / (1000 * 60 * 60 * 24))
+      if (!unitTimes[unit]) unitTimes[unit] = []
+      unitTimes[unit].push(days)
+    }
+    const avgDeliveryByUnit = {}
+    for (const [unit, times] of Object.entries(unitTimes)) {
+      avgDeliveryByUnit[unit] = Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+    }
+    const globalAvgDelivery = archivedProjects.length > 0
+      ? Math.round(
+          archivedProjects.reduce((acc, p) =>
+            acc + Math.round((new Date(p.archived_at) - new Date(p.created_at)) / (1000 * 60 * 60 * 24)), 0
+          ) / archivedProjects.length
+        )
+      : null
+
+    const today = new Date()
+    const sixMonthsLater = new Date()
+    sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6)
+    const upcomingGoLives = await prisma.project.findMany({
+      where: {
+        archived: false,
+        origin: 'NORMAL',
+        go_live: { gte: today, lte: sixMonthsLater }
+      },
+      select: { go_live: true }
+    })
+    const goLiveByMonth = {}
+    for (const p of upcomingGoLives) {
+      const key = new Date(p.go_live).toISOString().slice(0, 7) // "2026-05"
+      goLiveByMonth[key] = (goLiveByMonth[key] || 0) + 1
+    }
+
     const allActiveUserIds = new Set()
     const projectMembers = await prisma.projectMember.findMany({
       where: { project: { archived: false, origin: 'NORMAL' } },
@@ -116,6 +167,10 @@ const getDashboard = async (req, res) => {
       by_farol: byFarol,
       by_phase: byPhase,
       by_unit: byUnit,
+      by_level: levelMap,
+      avg_delivery_by_unit: avgDeliveryByUnit,
+      avg_delivery_global: globalAvgDelivery,
+      go_live_timeline: goLiveByMonth,
     })
   } catch (err) {
     console.error(err)
