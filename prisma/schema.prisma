@@ -54,6 +54,7 @@ model Project {
   freshservice_ticket_id String?
   archived       Boolean   @default(false)
   archived_at    DateTime?
+  delivered_at   DateTime?
   created_at     DateTime  @default(now())
   tasks Task[]
   go_live_history GoLiveHistory[]

@@ -11,19 +11,20 @@ const listProjects = async (req, res) => {
     const TI_AREA = 'Tecnologia da Informação'
     const isFromTI = requester.area === TI_AREA
 
-    let whereClause = { archived: false, origin: 'NORMAL' }
+    let whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' } }
 
     if (requester.role === 'ANALISTA_MASTER' || requester.role === 'ANALISTA_TESTADOR') {
-      whereClause = { archived: false, origin: 'NORMAL' }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' } }
     } else if ((requester.role === 'GERENTE' || requester.role === 'COORDENADOR') && isFromTI) {
-      whereClause = { archived: false, origin: 'NORMAL' }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' } }
     } else if (['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR'].includes(requester.role)) {
       const user = await prisma.user.findUnique({ where: { id: requester.id } })
-      whereClause = { archived: false, origin: 'NORMAL', area: { contains: user.area } }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' }, area: { contains: user.area } }
     } else {
       whereClause = {
         archived: false,
         origin: 'NORMAL',
+        current_phase: { not: 'ENTREGUE' },
         OR: [
           { requesters: { some: { user_id: requester.id } } },
           { members: { some: { user_id: requester.id } } }
@@ -77,6 +78,28 @@ const listProjects = async (req, res) => {
   } catch (err) {
     console.error(err)
     return res.status(500).json({ error: 'Erro ao listar projetos' })
+  }
+}
+
+const listGoLiveProjects = async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      where: {
+        current_phase: 'ENTREGUE',
+        archived: false,
+        origin: 'NORMAL',
+      },
+      include: {
+        requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
+        owner: { select: { id: true, name: true, email: true } },
+        members: { include: { user: { select: { id: true, name: true, email: true } } } },
+        costs: true,
+      },
+      orderBy: { delivered_at: 'desc' }
+    })
+    return res.status(200).json(projects)
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao listar projetos em go-live' })
   }
 }
 
@@ -316,6 +339,30 @@ const updateProject = async (req, res) => {
       member_ids, member_names, costs
     } = req.body
 
+    if (current_phase && current_phase !== project.current_phase) {
+      const scopeItems = await prisma.scopeItem.findMany({
+        where: { project_id: id, status: 'APROVADO' }
+      })
+
+      const stageComplete = (stageKey) => {
+        const items = scopeItems.filter(s => s.stage === stageKey)
+        if (items.length === 0) return true // aprovado sem atividades
+        return items.every(s => s.completion_date !== null)
+      }
+
+      const TRANSITIONS = {
+        DESENVOLVIMENTO: () => stageComplete('PLANEJAMENTO'),
+        ENTREGUE: () => stageComplete('EXECUCAO'),
+        SUPORTE: () => stageComplete('GO_LIVE'),
+      }
+
+      if (TRANSITIONS[current_phase] && !TRANSITIONS[current_phase]()) {
+        return res.status(400).json({
+          error: `Não é possível avançar para "${current_phase}". Conclua todas as atividades aprovadas do cronograma correspondente.`
+        })
+      }
+    }
+
     const dataToUpdate = {
       ...(title && { title }),
       ...(area && { area }),
@@ -333,15 +380,13 @@ const updateProject = async (req, res) => {
 
     if (current_phase === 'ENTREGUE') {
       dataToUpdate.completion_pct = 100
+      dataToUpdate.delivered_at = new Date()
     }
 
-    const shouldArchive =
-      current_phase === 'ENTREGUE' ||
-      (completion_pct !== undefined && parseInt(completion_pct) === 100)
-
-    if (shouldArchive) {
+    if (current_phase === 'SUPORTE') {
       dataToUpdate.archived = true
       dataToUpdate.archived_at = new Date()
+      dataToUpdate.completion_pct = 100
     }
 
     const updated = await prisma.project.update({ where: { id }, data: dataToUpdate })
@@ -557,8 +602,8 @@ const listFreshserviceRequests = async (req, res) => {
 }
 
 module.exports = {
-  listProjects, listArchivedProjects, getProjectById,
-  createProject, updateProject, deleteProject,
-  assignMember, archiveExpiredProjects,
+  listProjects, listArchivedProjects, listGoLiveProjects, 
+  getProjectById, createProject, updateProject,
+  deleteProject, assignMember, archiveExpiredProjects,
   approveFreshservice, rejectFreshservice, listFreshserviceRequests
 }

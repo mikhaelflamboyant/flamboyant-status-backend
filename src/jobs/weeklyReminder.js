@@ -59,11 +59,42 @@ const startWeeklyReminderJob = () => {
     } catch (err) {
       console.error('[CRON] Erro ao enviar lembretes:', err)
     }
-  }, {
-    timezone: 'America/Sao_Paulo'
-  })
+  }, { timezone: 'America/Sao_Paulo' }) // ← fechamento correto do primeiro cron
 
-  console.log('[CRON] Job de lembrete semanal iniciado — sextas-feiras às 9h')
+  cron.schedule('0 1 * * *', async () => {
+    try {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+      const projects = await prisma.project.findMany({
+        where: {
+          current_phase: 'ENTREGUE',
+          archived: false,
+          delivered_at: { lte: thirtyDaysAgo }
+        }
+      })
+
+      for (const project of projects) {
+        await prisma.project.update({
+          where: { id: project.id },
+          data: {
+            current_phase: 'SUPORTE',
+            archived: true,
+            archived_at: new Date(),
+            completion_pct: 100,
+          }
+        })
+      }
+
+      if (projects.length > 0) {
+        console.log(`[CRON] ${projects.length} projeto(s) movidos para SUPORTE`)
+      }
+    } catch (err) {
+      console.error('[CRON] Erro ao mover projetos para SUPORTE:', err)
+    }
+  }, { timezone: 'America/Sao_Paulo' })
+
+  console.log('[CRON] Jobs iniciados — lembretes às sextas 9h, SUPORTE diário à 1h')
 }
 
 module.exports = { startWeeklyReminderJob }
