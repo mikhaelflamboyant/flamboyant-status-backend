@@ -39,7 +39,7 @@ model Project {
   requester_name String @default("")
   requesters     ProjectRequester[]
   execution_type String    @default("INTERNA")
-  priority       Int       @default(3)
+  level          String?
   description    String
   business_unit  String?
   budget_planned Float?
@@ -232,6 +232,8 @@ model ScopeItem {
   start_date            DateTime?
   end_date              DateTime?
   completion_pct        Int       @default(0)
+  stage                 String?
+  completion_date       DateTime?
   status                String    @default("RASCUNHO")
   pending_title         String?
   pending_description   String?

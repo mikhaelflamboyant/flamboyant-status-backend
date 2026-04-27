@@ -181,7 +181,7 @@ const createProject = async (req, res) => {
   try {
     const requester = req.user
     const {
-      title, area, business_unit, execution_type, priority, description,
+      title, area, business_unit, execution_type, level, description,
       go_live, owner_id, member_ids, requester_ids, responsible_ids, costs
     } = req.body
 
@@ -203,7 +203,7 @@ const createProject = async (req, res) => {
         business_unit: business_unit || null,
         requester_name: '',
         execution_type: execution_type || 'INTERNA',
-        priority: priority || 3,
+        level: level || null,
         description,
         go_live: go_live ? new Date(go_live) : null,
         start_date: req.body.start_date ? new Date(req.body.start_date) : null,
@@ -310,7 +310,7 @@ const updateProject = async (req, res) => {
     }
 
     const {
-      title, area, business_unit, execution_type, priority, description,
+      title, area, business_unit, execution_type, level, description,
       go_live, owner_id, current_phase, traffic_light, completion_pct,
       requester_ids, requester_names, responsible_ids, responsible_names,
       member_ids, member_names, costs
@@ -320,7 +320,7 @@ const updateProject = async (req, res) => {
       ...(title && { title }),
       ...(area && { area }),
       ...(execution_type && { execution_type }),
-      ...(priority && { priority }),
+      ...(level && { level }),
       ...(description && { description }),
       ...(business_unit !== undefined && { business_unit }),
       ...(go_live && { go_live: new Date(go_live) }),
@@ -491,7 +491,7 @@ const approveFreshservice = async (req, res) => {
     const {
       area,
       business_unit,
-      priority,
+      level,
       go_live,
       go_live_undefined,
       responsible_id,
@@ -505,7 +505,7 @@ const approveFreshservice = async (req, res) => {
       data: {
         area,
         business_unit,
-        priority: parseInt(priority),
+        level: parseInt(level),
         go_live: go_live_undefined ? null : (go_live ? new Date(go_live) : null),
         execution_type: execution_type || 'INTERNA',
         origin: 'NORMAL',
