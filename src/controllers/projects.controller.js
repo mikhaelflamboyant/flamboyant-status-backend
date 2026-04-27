@@ -63,6 +63,7 @@ const listProjects = async (req, res) => {
     today.setHours(0, 0, 0, 0)
 
     for (const project of projects) {
+      if (!project.go_live) continue
       const goLiveDate = new Date(project.go_live)
       goLiveDate.setHours(0, 0, 0, 0)
       if (goLiveDate < today && project.traffic_light === 'VERDE') {
