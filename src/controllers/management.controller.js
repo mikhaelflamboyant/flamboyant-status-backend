@@ -115,7 +115,7 @@ const getDashboard = async (req, res) => {
     }
     const globalAvgDelivery = deliveredProjects.length > 0
       ? Math.round(
-          archivedProjects.reduce((acc, p) =>
+          deliveredProjects.reduce((acc, p) =>
             acc + Math.round((new Date(p.archived_at) - new Date(p.created_at)) / (1000 * 60 * 60 * 24)), 0
           ) / deliveredProjects.length
         )
