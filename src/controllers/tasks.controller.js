@@ -103,9 +103,12 @@ const updateTask = async (req, res) => {
 
     if (!task) return res.status(404).json({ error: 'Tarefa não encontrada' })
 
-    const allowed = await canManageTasks(requester, task.project_id)
-    if (!allowed) {
-      return res.status(403).json({ error: 'Sem permissão para editar esta tarefa' })
+    const isPrivileged = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR'].includes(requester.role)
+    const isResponsible = task.project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
+    const isAssignee = task.assignee_id === requester.id
+
+    if (!isPrivileged && !(isResponsible && isAssignee)) {
+      return res.status(403).json({ error: 'Apenas o responsável pelo projeto que também é responsável pela tarefa pode editá-la' })
     }
 
     const originalTask = await prisma.task.findUnique({ where: { id } })
