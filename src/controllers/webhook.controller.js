@@ -20,7 +20,6 @@ const freshserviceWebhook = async (req, res) => {
         area: '',
         requester_name: payload.requester?.name || '',
         execution_type: 'INTERNA',
-        priority: 3,
         description,
         go_live: null,
         traffic_light: 'VERDE',
