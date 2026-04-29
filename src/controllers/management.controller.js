@@ -37,7 +37,7 @@ const getDashboard = async (req, res) => {
     const phases = [
       'RECEBIDA', 'ENTREVISTA_SOLICITANTE', 'LEVANTAMENTO_REQUISITOS',
       'ANALISE_SOLUCAO', 'DESENVOLVIMENTO', 'TESTES',
-      'VALIDACAO_SOLICITANTE', 'ENTREGUE'
+      'VALIDACAO_SOLICITANTE', 'ENTREGUE', 'SUPORTE'
     ]
     const byPhase = {}
     for (const phase of phases) {
@@ -113,11 +113,11 @@ const getDashboard = async (req, res) => {
     for (const [unit, times] of Object.entries(unitTimes)) {
       avgDeliveryByUnit[unit] = Math.round(times.reduce((a, b) => a + b, 0) / times.length)
     }
-    const globalAvgDelivery = archivedProjects.length > 0
+    const globalAvgDelivery = deliveredProjects.length > 0
       ? Math.round(
           archivedProjects.reduce((acc, p) =>
             acc + Math.round((new Date(p.archived_at) - new Date(p.created_at)) / (1000 * 60 * 60 * 24)), 0
-          ) / archivedProjects.length
+          ) / deliveredProjects.length
         )
       : null
 

@@ -347,8 +347,11 @@ const updateProject = async (req, res) => {
       })
 
       const stageComplete = (stageKey) => {
+        const hasPendingActions = scopeItems.some(s => s.pending_action)
+        if (hasPendingActions) return false
+
         const items = scopeItems.filter(s => s.stage === stageKey)
-        if (items.length === 0) return true // aprovado sem atividades
+        if (items.length === 0) return true
         return items.every(s => s.completion_date !== null)
       }
 
