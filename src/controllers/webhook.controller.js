@@ -23,7 +23,7 @@ const freshserviceWebhook = async (req, res) => {
         description,
         go_live: null,
         traffic_light: 'VERDE',
-        current_phase: 'RECEBIDA',
+        current_phase: 'BACKLOG',
         completion_pct: 0,
         origin: 'FRESHSERVICE',
         freshservice_ticket_id: ticketId ? String(ticketId) : null,

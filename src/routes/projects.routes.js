@@ -14,6 +14,8 @@ router.get('/freshservice-requests', requireRole('ANALISTA_MASTER', 'COORDENADOR
 router.get('/', listProjects)
 router.get('/archived', listArchivedProjects)
 router.get('/go-live', listGoLiveProjects)
+router.get('/backlog', listBacklogProjects)
+router.post('/:id/assign', assignResponsible)
 router.get('/:id', getProjectById)
 router.post('/', createProject)
 router.patch('/:id', updateProject)

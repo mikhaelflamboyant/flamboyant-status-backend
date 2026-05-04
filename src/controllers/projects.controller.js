@@ -1,9 +1,10 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 const {
-  notifyUserLinkedToProject,
-  notifyNewProject
-} = require('../services/notifications.service')
+  listProjects, listArchivedProjects, listGoLiveProjects, listBacklogProjects,
+  getProjectById, createProject, updateProject, deleteProject, assignMember,
+  approveFreshservice, rejectFreshservice, listFreshserviceRequests, assignResponsible
+} = require('../controllers/projects.controller')
 
 const listProjects = async (req, res) => {
   try {
@@ -11,20 +12,20 @@ const listProjects = async (req, res) => {
     const TI_AREA = 'Tecnologia da Informação'
     const isFromTI = requester.area === TI_AREA
 
-    let whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' } }
+    let whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] } }
 
     if (requester.role === 'ANALISTA_MASTER' || requester.role === 'ANALISTA_TESTADOR') {
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' } }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] } }
     } else if ((requester.role === 'GERENTE' || requester.role === 'COORDENADOR') && isFromTI) {
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' } }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] } }
     } else if (['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR'].includes(requester.role)) {
       const user = await prisma.user.findUnique({ where: { id: requester.id } })
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { not: 'ENTREGUE' }, area: { contains: user.area } }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] }, area: { contains: user.area } }
     } else {
       whereClause = {
         archived: false,
         origin: 'NORMAL',
-        current_phase: { not: 'ENTREGUE' },
+        current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] },
         OR: [
           { requesters: { some: { user_id: requester.id } } },
           { members: { some: { user_id: requester.id } } }
@@ -606,9 +607,66 @@ const listFreshserviceRequests = async (req, res) => {
   }
 }
 
+const listBacklogProjects = async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      where: { current_phase: 'BACKLOG', archived: false },
+      include: {
+        requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
+      },
+      orderBy: { created_at: 'desc' }
+    })
+    return res.status(200).json(projects)
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro ao listar backlog' })
+  }
+}
+
+const assignResponsible = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { user_id } = req.body
+    const requester = req.user
+
+    const TI_AREA = 'Tecnologia da Informação'
+    const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+    if (!isFromTI) {
+      return res.status(403).json({ error: 'Sem permissão' })
+    }
+
+    const canAssignOthers = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+
+    if (!canAssignOthers && user_id !== requester.id) {
+      return res.status(403).json({ error: 'Você só pode se vincular a si mesmo' })
+    }
+
+    const project = await prisma.project.findUnique({ where: { id } })
+    if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })
+    if (project.current_phase !== 'BACKLOG') {
+      return res.status(400).json({ error: 'Projeto não está em backlog' })
+    }
+
+    await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'RESPONSAVEL' } })
+    await prisma.projectRequester.create({
+      data: { project_id: id, user_id, type: 'RESPONSAVEL' }
+    })
+
+    await prisma.project.update({
+      where: { id },
+      data: { current_phase: 'RECEBIDA', owner_id: user_id, origin: 'NORMAL' }
+    })
+
+    return res.status(200).json({ message: 'Responsável atribuído com sucesso' })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Erro ao atribuir responsável' })
+  }
+}
+
 module.exports = {
-  listProjects, listArchivedProjects, listGoLiveProjects, 
+  listProjects, listArchivedProjects, listGoLiveProjects, listBacklogProjects,
   getProjectById, createProject, updateProject,
   deleteProject, assignMember, archiveExpiredProjects,
-  approveFreshservice, rejectFreshservice, listFreshserviceRequests
+  approveFreshservice, rejectFreshservice, listFreshserviceRequests,
+  assignResponsible
 }
