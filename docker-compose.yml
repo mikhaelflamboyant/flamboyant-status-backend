@@ -18,7 +18,7 @@ services:
       - FRONTEND_URL=${FRONTEND_URL}
       - SESSION_SECRET=${SESSION_SECRET}
     env_file:
-      - .env
+      - .env.production
 
   frontend:
     build:
