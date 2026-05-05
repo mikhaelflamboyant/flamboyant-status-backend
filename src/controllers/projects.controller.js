@@ -560,10 +560,10 @@ const approveFreshservice = async (req, res) => {
         go_live: go_live_undefined ? null : (go_live ? new Date(go_live) : null),
         execution_type: execution_type || 'INTERNA',
         origin: 'NORMAL',
+        current_phase: 'BACKLOG',
       }
     })
 
-    // Vincular responsável
     if (responsible_id) {
       await prisma.projectRequester.create({
         data: { project_id: id, user_id: responsible_id, type: 'RESPONSAVEL' }
