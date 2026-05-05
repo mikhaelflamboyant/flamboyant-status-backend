@@ -551,7 +551,7 @@ const approveFreshservice = async (req, res) => {
       data: {
         area,
         business_unit,
-        level: parseInt(level),
+        level: level || null,
         go_live: go_live_undefined ? null : (go_live ? new Date(go_live) : null),
         execution_type: execution_type || 'INTERNA',
         origin: 'NORMAL',
