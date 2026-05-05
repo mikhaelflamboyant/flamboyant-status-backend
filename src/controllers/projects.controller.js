@@ -544,6 +544,8 @@ const approveFreshservice = async (req, res) => {
       responsible_name,
       responsible_area,
       execution_type,
+      requester_name,
+      description,
     } = req.body
 
     const project = await prisma.project.update({
@@ -556,6 +558,8 @@ const approveFreshservice = async (req, res) => {
         execution_type: execution_type || 'INTERNA',
         origin: 'NORMAL',
         current_phase: 'BACKLOG',
+        ...(description && { description }),
+        ...(requester_name && { requester_name }),
       }
     })
 
@@ -566,6 +570,13 @@ const approveFreshservice = async (req, res) => {
     } else if (responsible_name) {
       await prisma.projectRequester.create({
         data: { project_id: id, manual_name: responsible_name, manual_area: responsible_area || '', type: 'RESPONSAVEL' }
+      })
+    }
+
+    if (requester_name) {
+      await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'SOLICITANTE' } })
+      await prisma.projectRequester.create({
+        data: { project_id: id, manual_name: requester_name, manual_area: area || '', type: 'SOLICITANTE' }
       })
     }
 
