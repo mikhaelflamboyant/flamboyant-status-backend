@@ -2,9 +2,9 @@ const express = require('express')
 const router = express.Router()
 const { requireRole } = require('../middlewares/role.middleware')
 const {
-  listProjects, listArchivedProjects, listGoLiveProjects, getProjectById,
-  createProject, updateProject, deleteProject, assignMember,
-  approveFreshservice, rejectFreshservice, listFreshserviceRequests
+  listProjects, listArchivedProjects, listGoLiveProjects, listBacklogProjects,
+  getProjectById, createProject, updateProject, deleteProject, assignMember,
+  approveFreshservice, rejectFreshservice, listFreshserviceRequests, assignResponsible
 } = require('../controllers/projects.controller')
 const authMiddleware = require('../middlewares/auth.middleware')
 
