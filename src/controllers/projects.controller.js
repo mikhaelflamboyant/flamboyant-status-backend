@@ -605,7 +605,7 @@ const listFreshserviceRequests = async (req, res) => {
 const listBacklogProjects = async (req, res) => {
   try {
     const projects = await prisma.project.findMany({
-      where: { current_phase: 'BACKLOG', archived: false },
+      where: { current_phase: 'BACKLOG', archived: false, origin: 'NORMAL' },
       include: {
         requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
       },
