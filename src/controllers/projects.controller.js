@@ -535,17 +535,9 @@ const approveFreshservice = async (req, res) => {
   try {
     const { id } = req.params
     const {
-      area,
-      business_unit,
-      level,
-      go_live,
-      go_live_undefined,
-      responsible_id,
-      responsible_name,
-      responsible_area,
-      execution_type,
-      requester_name,
-      description,
+      area, business_unit, level, go_live, go_live_undefined,
+      responsible_id, responsible_name, responsible_area, execution_type,
+      description, requester_ids, requester_names,
     } = req.body
 
     const project = await prisma.project.update({
@@ -559,7 +551,6 @@ const approveFreshservice = async (req, res) => {
         origin: 'NORMAL',
         current_phase: 'BACKLOG',
         ...(description && { description }),
-        ...(requester_name && { requester_name }),
       }
     })
 
@@ -573,11 +564,18 @@ const approveFreshservice = async (req, res) => {
       })
     }
 
-    if (requester_name) {
+    if (requester_ids?.length > 0 || requester_names?.length > 0) {
       await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'SOLICITANTE' } })
-      await prisma.projectRequester.create({
-        data: { project_id: id, manual_name: requester_name, manual_area: area || '', type: 'SOLICITANTE' }
-      })
+      for (const user_id of (requester_ids || [])) {
+        await prisma.projectRequester.create({
+          data: { project_id: id, user_id, type: 'SOLICITANTE' }
+        })
+      }
+      for (const person of (requester_names || [])) {
+        await prisma.projectRequester.create({
+          data: { project_id: id, manual_name: person.name, manual_area: person.area || '', type: 'SOLICITANTE' }
+        })
+      }
     }
 
     return res.status(200).json(project)
