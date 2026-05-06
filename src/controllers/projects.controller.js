@@ -403,7 +403,6 @@ const updateProject = async (req, res) => {
       })
     }
 
-    // Atualiza solicitantes se enviados
     if (requester_ids !== undefined || requester_names !== undefined) {
       await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'SOLICITANTE' } })
       for (const user_id of (requester_ids || [])) {
@@ -414,7 +413,6 @@ const updateProject = async (req, res) => {
       }
     }
 
-    // Atualiza responsáveis se enviados
     if (responsible_ids !== undefined || responsible_names !== undefined) {
       await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'RESPONSAVEL' } })
       for (const user_id of (responsible_ids || [])) {
@@ -423,14 +421,13 @@ const updateProject = async (req, res) => {
       for (const person of (responsible_names || [])) {
         await prisma.projectRequester.create({ data: { project: { connect: { id } }, manual_name: person.name, manual_area: person.area, type: 'RESPONSAVEL' } })
       }
-      // Atualiza owner para primeiro responsável com user_id real
+
       if (requester_ids?.length > 0 || responsible_ids?.length > 0) {
         const firstResponsible = (responsible_ids || [])[0] || null
         await prisma.project.update({ where: { id }, data: { owner_id: firstResponsible || null } })
       }
     }
 
-    // Atualiza membros se enviados
     if (member_ids !== undefined || member_names !== undefined) {
       await prisma.projectMember.deleteMany({ where: { project_id: id } })
       for (const user_id of (member_ids || [])) {
@@ -441,7 +438,6 @@ const updateProject = async (req, res) => {
       }
     }
 
-    // Atualiza custos se enviados
     if (costs !== undefined) {
       await prisma.projectCost.deleteMany({ where: { project_id: id } })
       for (const cost of costs) {
@@ -535,18 +531,20 @@ const approveFreshservice = async (req, res) => {
   try {
     const { id } = req.params
     const {
-      area, business_unit, level, go_live, go_live_undefined,
-      responsible_id, responsible_name, responsible_area, execution_type,
-      description, requester_ids, requester_names,
+      title, area, business_unit, level, go_live, go_live_undefined,
+      start_date, responsible_id, responsible_name, responsible_area, execution_type,
+      description, requester_ids, requester_names, member_ids, member_names, costs,
     } = req.body
 
     const project = await prisma.project.update({
       where: { id },
       data: {
+        ...(title && { title }),
         area,
         business_unit,
         level: level || null,
         go_live: go_live_undefined ? null : (go_live ? new Date(go_live) : null),
+        ...(start_date && { start_date: new Date(start_date) }),
         execution_type: execution_type || 'INTERNA',
         origin: 'NORMAL',
         current_phase: 'BACKLOG',
@@ -574,6 +572,29 @@ const approveFreshservice = async (req, res) => {
       for (const person of (requester_names || [])) {
         await prisma.projectRequester.create({
           data: { project_id: id, manual_name: person.name, manual_area: person.area || '', type: 'SOLICITANTE' }
+        })
+      }
+    }
+
+    if (member_ids?.length > 0) {
+      for (const user_id of member_ids) {
+        await prisma.projectMember.create({ data: { project_id: id, user_id } })
+      }
+    }
+    if (member_names?.length > 0) {
+      for (const person of member_names) {
+        await prisma.projectMember.create({ data: { project_id: id, manual_name: person.name, manual_area: person.area || '' } })
+      }
+    }
+    if (costs?.length > 0) {
+      for (const cost of costs) {
+        await prisma.projectCost.create({
+          data: {
+            project_id: id,
+            name: cost.name,
+            budget_planned: parseFloat(cost.budget_planned),
+            budget_actual: cost.budget_actual ? parseFloat(cost.budget_actual) : null,
+          }
         })
       }
     }
@@ -629,17 +650,18 @@ const listBacklogProjects = async (req, res) => {
 const assignResponsible = async (req, res) => {
   try {
     const { id } = req.params
-    const { user_id } = req.body
+    const {
+      user_id, responsible_name, responsible_area,
+      description, execution_type, start_date, go_live, go_live_undefined,
+      member_ids, member_names, costs
+    } = req.body
     const requester = req.user
 
     const TI_AREA = 'Tecnologia da Informação'
     const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
-    if (!isFromTI) {
-      return res.status(403).json({ error: 'Sem permissão' })
-    }
+    if (!isFromTI) return res.status(403).json({ error: 'Sem permissão' })
 
     const canAssignOthers = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
-
     if (!canAssignOthers && user_id !== requester.id) {
       return res.status(403).json({ error: 'Você só pode se vincular a si mesmo' })
     }
@@ -651,14 +673,53 @@ const assignResponsible = async (req, res) => {
     }
 
     await prisma.projectRequester.deleteMany({ where: { project_id: id, type: 'RESPONSAVEL' } })
-    await prisma.projectRequester.create({
-      data: { project_id: id, user_id, type: 'RESPONSAVEL' }
-    })
 
-    await prisma.project.update({
-      where: { id },
-      data: { current_phase: 'RECEBIDA', owner_id: user_id, origin: 'NORMAL' }
-    })
+    if (user_id) {
+      await prisma.projectRequester.create({
+        data: { project_id: id, user_id, type: 'RESPONSAVEL' }
+      })
+    } else if (responsible_name) {
+      await prisma.projectRequester.create({
+        data: { project_id: id, manual_name: responsible_name, manual_area: responsible_area || '', type: 'RESPONSAVEL' }
+      })
+    }
+
+    const dataToUpdate = {
+      current_phase: 'RECEBIDA',
+      owner_id: user_id || null,
+      origin: 'NORMAL',
+      ...(description && { description }),
+      ...(execution_type && { execution_type }),
+      ...(start_date && { start_date: new Date(start_date) }),
+      go_live: go_live_undefined ? null : (go_live ? new Date(go_live) : project.go_live),
+    }
+
+    await prisma.project.update({ where: { id }, data: dataToUpdate })
+
+    if (member_ids?.length > 0) {
+      for (const uid of member_ids) {
+        await prisma.projectMember.create({ data: { project_id: id, user_id: uid } })
+      }
+    }
+    if (member_names?.length > 0) {
+      for (const person of member_names) {
+        await prisma.projectMember.create({ data: { project_id: id, manual_name: person.name, manual_area: person.area || '' } })
+      }
+    }
+
+    if (costs?.length > 0) {
+      await prisma.projectCost.deleteMany({ where: { project_id: id } })
+      for (const cost of costs) {
+        await prisma.projectCost.create({
+          data: {
+            project_id: id,
+            name: cost.name,
+            budget_planned: parseFloat(cost.budget_planned),
+            budget_actual: cost.budget_actual ? parseFloat(cost.budget_actual) : null,
+          }
+        })
+      }
+    }
 
     return res.status(200).json({ message: 'Responsável atribuído com sucesso' })
   } catch (err) {
