@@ -3,7 +3,11 @@ const cors = require('cors')
 const app = express()
 
 app.use(cors({
-  origin: '*',
+  origin: [
+    'https://statusreport.flamboyant.com.br:4443',
+    'http://10.0.0.96:4443',
+    'http://localhost:5173',
+  ],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
