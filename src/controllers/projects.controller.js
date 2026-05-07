@@ -382,12 +382,24 @@ const updateProject = async (req, res) => {
     if (current_phase === 'ENTREGUE') {
       dataToUpdate.completion_pct = 100
       dataToUpdate.delivered_at = new Date()
+      dataToUpdate.archived = false
+      dataToUpdate.archived_at = null
     }
 
     if (current_phase === 'SUPORTE') {
       dataToUpdate.archived = true
       dataToUpdate.archived_at = new Date()
       dataToUpdate.completion_pct = 100
+    }
+
+    if (current_phase && current_phase !== 'ENTREGUE' && current_phase !== 'SUPORTE') {
+      dataToUpdate.archived = false
+      dataToUpdate.archived_at = null
+    }
+
+    if (completion_pct !== undefined && parseInt(completion_pct) < 100 && project.current_phase === 'ENTREGUE' && !current_phase) {
+      dataToUpdate.archived = false
+      dataToUpdate.archived_at = null
     }
 
     const updated = await prisma.project.update({ where: { id }, data: dataToUpdate })
