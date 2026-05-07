@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
 
 const listProjects = async (req, res) => {
   try {
