@@ -213,9 +213,7 @@ const createProject = async (req, res) => {
       return res.status(400).json({ error: 'Campos obrigatórios: título e descrição.' })
     }
 
-    const goLiveDate = new Date(go_live)
-    const today = new Date()
-    const autoTrafficLight = goLiveDate < today ? 'VERMELHO' : 'VERDE'
+    const autoTrafficLight = go_live ? (new Date(go_live) < new Date() ? 'VERMELHO' : 'VERDE') : 'VERDE'
 
     const project = await prisma.project.create({
       data: {
