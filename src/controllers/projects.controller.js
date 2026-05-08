@@ -201,12 +201,16 @@ const createProject = async (req, res) => {
   try {
     const requester = req.user
     const {
-      title, area, business_unit, execution_type, level, description,
+      title, area, business_unit, execution_type, level, complexity, description,
       go_live, owner_id, member_ids, requester_ids, responsible_ids, costs
     } = req.body
 
-    if (requester.area !== 'Tecnologia da Informação' && !['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
-      return res.status(403).json({ error: 'Apenas o time de TI pode criar projetos.' })
+    const BACKLOG_ALLOWED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
+    const isTI = requester.area === 'Tecnologia da Informação' || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+    const canCreateBacklog = BACKLOG_ALLOWED_ROLES.includes(requester.role)
+
+    if (!isTI && !canCreateBacklog) {
+      return res.status(403).json({ error: 'Sem permissão para criar projetos.' })
     }
 
     if (!title || !description) {
@@ -222,11 +226,13 @@ const createProject = async (req, res) => {
         requester_name: '',
         execution_type: execution_type || 'INTERNA',
         level: level || null,
+        complexity: complexity || null,
         description,
         go_live: go_live ? new Date(go_live) : null,
         start_date: req.body.start_date ? new Date(req.body.start_date) : null,
         owner_id: owner_id || null,
         traffic_light: autoTrafficLight,
+        current_phase: req.body.current_phase || 'RECEBIDA',
         legacy: req.body.legacy === true || req.body.legacy === 'true',
       }
     })
@@ -367,6 +373,7 @@ const updateProject = async (req, res) => {
       ...(area && { area }),
       ...(execution_type && { execution_type }),
       ...(level && { level }),
+      ...(complexity !== undefined && { complexity }),
       ...(description && { description }),
       ...(business_unit !== undefined && { business_unit }),
       ...(go_live && { go_live: new Date(go_live) }),

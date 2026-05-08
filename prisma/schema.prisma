@@ -40,6 +40,7 @@ model Project {
   requesters     ProjectRequester[]
   execution_type String    @default("INTERNA")
   level          String?
+  complexity     String?
   description    String
   business_unit  String?
   budget_planned Float?
