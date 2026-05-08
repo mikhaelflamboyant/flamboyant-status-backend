@@ -335,7 +335,7 @@ const updateProject = async (req, res) => {
     }
 
     const {
-      title, area, business_unit, execution_type, level, description,
+      title, area, business_unit, execution_type, level, complexity, description,
       go_live, owner_id, current_phase, traffic_light, completion_pct,
       requester_ids, requester_names, responsible_ids, responsible_names,
       member_ids, member_names, costs
