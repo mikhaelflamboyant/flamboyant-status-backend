@@ -16,7 +16,7 @@ const getDashboard = async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para acessar o painel de gestão' })
     }
 
-    const [activeProjects, archivedProjects] = await Promise.all([
+    const [activeProjects, archivedProjects, backlogProjects, goLiveProjects] = await Promise.all([
       prisma.project.findMany({
         where: { archived: false, origin: 'NORMAL' },
         select: {
@@ -25,7 +25,25 @@ const getDashboard = async (req, res) => {
           go_live: true, title: true, created_at: true
         }
       }),
-      prisma.project.count({ where: { archived: true } })
+      prisma.project.count({ where: { archived: true } }),
+      prisma.project.findMany({
+        where: { current_phase: 'BACKLOG', archived: false, origin: 'NORMAL' },
+        select: {
+          id: true, title: true, area: true, business_unit: true,
+          traffic_light: true, current_phase: true, go_live: true,
+          completion_pct: true, created_at: true
+        },
+        orderBy: { created_at: 'desc' }
+      }),
+      prisma.project.findMany({
+        where: { current_phase: 'ENTREGUE', archived: false, origin: 'NORMAL' },
+        select: {
+          id: true, title: true, area: true, business_unit: true,
+          traffic_light: true, current_phase: true, go_live: true,
+          completion_pct: true, created_at: true
+        },
+        orderBy: { created_at: 'desc' }
+      }),
     ])
 
     const byFarol = {
@@ -154,6 +172,9 @@ const getDashboard = async (req, res) => {
     const usersWithoutProjects = totalActiveUsers - allActiveUserIds.size
 
     return res.status(200).json({
+      backlog_projects: backlogProjects,
+      go_live_projects: goLiveProjects,
+      active_projects: activeProjects,
       totals: {
         active: activeProjects.length,
         archived: archivedProjects,
@@ -163,6 +184,8 @@ const getDashboard = async (req, res) => {
         no_go_live: noGoLive,
         delivered_this_month: deliveredThisMonth,
         users_without_projects: usersWithoutProjects,
+        backlog: backlogProjects.length,
+        go_live: goLiveProjects.length,
       },
       by_farol: byFarol,
       by_phase: byPhase,
