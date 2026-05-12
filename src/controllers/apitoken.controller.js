@@ -3,7 +3,7 @@ const crypto = require('crypto')
 const prisma = new PrismaClient()
 
 const TI_AREA = 'Tecnologia da Informação'
-const ALLOWED_ROLES = ['ANALISTA_MASTER', 'GERENTE', 'COORDENADOR', 'ANALISTA', 'SUPERVISOR', 'DIRETOR']
+const ALLOWED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
 
 const canManageTokens = (user) => {
   return user.area === TI_AREA && ALLOWED_ROLES.includes(user.role)
