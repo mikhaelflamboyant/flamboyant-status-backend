@@ -144,6 +144,25 @@ async function syncContactsFromAD() {
       if (!name) continue
 
       const mappedArea = NAME_AREA_MAP[name] || AREA_MAP[department] || department
+      const NON_PERSON_KEYWORDS = [
+        'flamboyant',
+        'fazenda ',
+        'tesouraria',
+        'brigada contra',
+        'encarregados',
+        'gestão de',
+        'postos de',
+        'automação',
+        'aux.',
+        'suporte operacional',
+        'dpessoal',
+        'urbanismo flamboyant',
+        'agropecuaria',
+      ]
+
+      const nameLower = name.toLowerCase()
+      const isNonPerson = NON_PERSON_KEYWORDS.some(kw => nameLower.includes(kw))
+      if (isNonPerson) continue
       results.push({ name, area: mappedArea })
     }
 
