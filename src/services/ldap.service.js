@@ -73,26 +73,78 @@ async function syncContactsFromAD() {
     })
 
     const TI = 'Tecnologia da Informação'
+
+    const AREA_MAP = {
+      'Administração de Pessoal': 'Administração Pessoal',
+      'Administrativo Estacionamento': 'Estacionamento',
+      'Escritório de Processos': 'Processos',
+      'Fazendas': 'Agropecuária',
+      'Flamboyant Agropecuária': 'Agropecuária',
+      'Fazenda California': 'Agropecuária',
+      'Juridico': 'Jurídico',
+      'Pessoas e Cultura Organizacional': 'Pessoas e Cultura',
+      'Segurança e Estacionamento': 'Segurança',
+      'Segurança Patrimonial': 'Segurança',
+      'Engenharia - Flamboyant Urbanismo': 'Engenharia',
+      'ObrasEngenharia': 'Engenharia',
+      'Manutenção e Operações': 'Manutenção',
+      'Operações e Manutenção': 'Manutenção',
+      'Superintendente de Operações': 'Operações',
+      'Superintendente Relacionamento': 'Relacionamento',
+      'Gestão de Residuos': 'Resíduos',
+      'Gestão de Resíduos': 'Resíduos',
+      'Instituto Flamboyant': 'Instituto Flamboyant',
+      'Familly Office': 'Family Office',
+    }
+
+    const NAME_AREA_MAP = {
+      'Adolfo Rodrigues': 'Projetos Urbanismo',
+      'Alessandra Moraes': 'Produtos e Projetos Urbanismo',
+      'Alessandra Rezio': 'Produtos e Projetos Urbanismo',
+      'Aline Moreira': 'Incorporação',
+      'Aline Nascimento': 'Relacionamento',
+      'Amanda Araujo': 'Projetos Urbanismo',
+      'Amanda de Oliveira': 'Relacionamento',
+      'Amanda Santos': 'Produtos e Projetos Urbanismo',
+      'Amanda Siqueira': 'Planejamento Financeiro Urbanismo',
+      'Ana Gabriela Santos': 'Projetos Urbanismo',
+      'Annie Karolinie Botterloff': 'Relacionamento',
+      'Carolina Vitti': 'Marketing Urbanismo',
+      'Darciso Abrantes': 'Administrativo Urbanismo',
+      'Elaine Silva': 'Relacionamento',
+      'Eloice Moraes': 'Financeiro',
+      'Fabio Guimarães': 'Planejamento Financeiro e Administrativo',
+      'Isabela Alves': 'Incorporação',
+      'Julia Silva': 'Experiência Urbanismo',
+      'Letícia Macedo': 'Projetos Urbanismo',
+      'Márcia Viana': 'Marketing Urbanismo',
+      'Marina Matos': 'Incorporação',
+      'Marina Oliveira': 'Projetos Urbanismo',
+      'Pedro Silva': 'Marketing Urbanismo',
+      'Rannya Mourão': 'Experiência Urbanismo',
+      'Renan Araújo': 'Planejamento Financeiro e Administrativo',
+      'Rodrigo Jhun Shimada': 'Engenharia',
+      'Sêny Azevedo': 'Marketing Urbanismo',
+      'Suellen oliveira': 'Experiência Urbanismo',
+      'Taís Passos': 'Relacionamento',
+      'Vitorhugo Gonçalves de Oliveira': 'Produtos Urbanismo',
+      'Henrique Cerqueira': 'Incorporação',
+    }
+
     const results = []
 
     for (const entry of searchEntries) {
-      const displayName = Array.isArray(entry.displayName)
-        ? entry.displayName[0]
-        : entry.displayName
-      const department = Array.isArray(entry.department)
-        ? entry.department[0]
-        : entry.department
+      const displayName = Array.isArray(entry.displayName) ? entry.displayName[0] : entry.displayName
+      const department = Array.isArray(entry.department) ? entry.department[0] : entry.department
 
       if (!displayName || !department) continue
       if (department === TI) continue
 
-      const name = displayName.includes(' - ')
-        ? displayName.split(' - ')[0].trim()
-        : displayName.trim()
-
+      const name = displayName.includes(' - ') ? displayName.split(' - ')[0].trim() : displayName.trim()
       if (!name) continue
 
-      results.push({ name, area: department })
+      const mappedArea = NAME_AREA_MAP[name] || AREA_MAP[department] || department
+      results.push({ name, area: mappedArea })
     }
 
     return results
