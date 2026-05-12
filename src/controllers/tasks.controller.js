@@ -1,5 +1,7 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const touchProject = (project_id) =>
+  prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
 const TI_AREA = 'Tecnologia da Informação'
 
@@ -82,6 +84,7 @@ const createTask = async (req, res) => {
         assignee: { select: { id: true, name: true } }
       }
     })
+    await touchProject(project_id)
 
     return res.status(201).json(task)
   } catch (err) {
@@ -129,6 +132,7 @@ const updateTask = async (req, res) => {
         assignee: { select: { id: true, name: true } }
       }
     })
+    await touchProject(task.project_id)
 
     if (end_date !== undefined && String(end_date) !== String(originalTask.end_date)) {
       await prisma.taskDateHistory.create({
@@ -168,6 +172,7 @@ const completeTask = async (req, res) => {
         assignee: { select: { id: true, name: true } }
       }
     })
+    await touchProject(task.project_id)
 
     return res.status(200).json(updated)
   } catch (err) {
@@ -190,6 +195,7 @@ const deleteTask = async (req, res) => {
     }
 
     await prisma.task.delete({ where: { id } })
+    await touchProject(task.project_id)
     return res.status(200).json({ message: 'Tarefa excluída com sucesso' })
   } catch (err) {
     console.error(err)

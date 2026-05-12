@@ -35,5 +35,6 @@ app.use('/notifications', require('./routes/notifications.routes'))
 app.use('/webhook', require('./routes/webhook.routes'))
 app.use('/api-tokens', require('./routes/apitoken.routes'))
 app.use('/public', require('./routes/public.routes'))
+app.use('/contacts', require('./routes/contacts.routes'))
 
 module.exports = app

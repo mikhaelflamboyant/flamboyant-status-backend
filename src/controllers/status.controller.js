@@ -1,5 +1,7 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const touchProject = (project_id) =>
+  prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 const { notifyNewStatus } = require('../services/notifications.service')
 
 const listStatusUpdates = async (req, res) => {
@@ -87,6 +89,7 @@ const createStatusUpdate = async (req, res) => {
         risks: true
       }
     })
+    await touchProject(project_id)
 
     const linkedUserIds = [
       ...project.requesters.map(r => r.user_id),
@@ -168,6 +171,7 @@ const updateStatusUpdate = async (req, res) => {
         risks: true
       }
     })
+    await touchProject(update.project_id)
 
     return res.status(200).json(updated)
   } catch (err) {
@@ -192,6 +196,7 @@ const deleteStatusUpdate = async (req, res) => {
     }
 
     await prisma.statusUpdate.delete({ where: { id } })
+    await touchProject(update.project_id)
     return res.status(200).json({ message: 'Status report excluído com sucesso' })
   } catch (err) {
     console.error(err)

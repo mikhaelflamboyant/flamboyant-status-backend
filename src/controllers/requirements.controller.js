@@ -1,5 +1,7 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const touchProject = (project_id) =>
+  prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
 const getRequirement = async (req, res) => {
   try {
@@ -71,6 +73,7 @@ const createRequirement = async (req, res) => {
       data: { project_id, author_id: requester.id, content },
       include: { author: { select: { id: true, name: true } } }
     })
+    await touchProject(project_id)
 
     return res.status(201).json(requirement)
   } catch (err) {
@@ -133,6 +136,7 @@ const updateRequirement = async (req, res) => {
         }
       }
     })
+    await touchProject(project_id)
 
     return res.status(200).json(updated)
   } catch (err) {

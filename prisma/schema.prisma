@@ -58,6 +58,7 @@ model Project {
   archived_at    DateTime?
   delivered_at   DateTime?
   created_at     DateTime  @default(now())
+  updated_at     DateTime  @default(now()) @updatedAt
   tasks Task[]
   go_live_history GoLiveHistory[]
   scope_items    ScopeItem[]
@@ -252,4 +253,11 @@ model ScopeItem {
   project      Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   tasks        Task[]
   created_by_user User @relation(fields: [created_by], references: [id])
+}
+
+model Contact {
+  id         String   @id @default(uuid())
+  name       String
+  area       String
+  created_at DateTime @default(now())
 }

@@ -1,5 +1,7 @@
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
+const touchProject = (project_id) =>
+  prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
 const TI_AREA = 'Tecnologia da Informação'
 const APPROVER_ROLES = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR']
@@ -95,6 +97,7 @@ const createScopeItem = async (req, res) => {
         created_by_user: { select: { id: true, name: true } }
       }
     })
+    await touchProject(project_id)
 
     return res.status(201).json(item)
   } catch (err) {
@@ -134,6 +137,7 @@ const updateScopeItem = async (req, res) => {
           created_by_user: { select: { id: true, name: true } }
         }
       })
+      await touchProject(item.project_id)
       return res.status(200).json(updated)
     }
 
@@ -155,6 +159,7 @@ const updateScopeItem = async (req, res) => {
         created_by_user: { select: { id: true, name: true } }
       }
     })
+    await touchProject(item.project_id)
 
     await _notifyApprovers(item.project_id, requester, 'edição de atividade do escopo')
 
@@ -193,6 +198,7 @@ const deleteScopeItem = async (req, res) => {
 
     if (item.status === 'RASCUNHO' || item.status === 'AGUARDANDO_APROVACAO') {
       await prisma.scopeItem.delete({ where: { id } })
+      await touchProject(item.project_id)
       return res.status(200).json({ message: 'Item excluído com sucesso' })
     }
 
@@ -202,6 +208,7 @@ const deleteScopeItem = async (req, res) => {
     })
 
     await _notifyApprovers(item.project_id, requester, 'exclusão de atividade do escopo')
+    await touchProject(item.project_id)
 
     return res.status(200).json({ ...updated, message: 'Exclusão enviada para aprovação' })
   } catch (err) {
@@ -283,6 +290,7 @@ const approveScope = async (req, res) => {
       }
     }
 
+    await touchProject(project_id)
     return res.status(200).json({ message: 'Escopo aprovado com sucesso' })
   } catch (err) {
     console.error(err)
@@ -423,6 +431,7 @@ const approveItems = async (req, res) => {
       }
     }
 
+    await touchProject(project_id)
     return res.status(200).json({ message: 'Itens aprovados com sucesso' })
   } catch (err) {
     console.error(err)
