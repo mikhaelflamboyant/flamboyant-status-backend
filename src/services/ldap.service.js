@@ -62,4 +62,43 @@ async function syncUsersFromAD() {
   }
 }
 
-module.exports = { findUserByEmail, authenticateUser, syncUsersFromAD }
+async function syncContactsFromAD() {
+  const client = new Client({ url: LDAP_URL, timeout: 5000 })
+  try {
+    await client.bind(BIND_DN, process.env.LDAP_SERVICE_PASS)
+    const { searchEntries } = await client.search(BASE_DN, {
+      scope: 'sub',
+      filter: '(&(objectClass=user)(mail=*)(displayName=*))',
+      attributes: ['cn', 'displayName', 'department'],
+    })
+
+    const TI = 'Tecnologia da Informação'
+    const results = []
+
+    for (const entry of searchEntries) {
+      const displayName = Array.isArray(entry.displayName)
+        ? entry.displayName[0]
+        : entry.displayName
+      const department = Array.isArray(entry.department)
+        ? entry.department[0]
+        : entry.department
+
+      if (!displayName || !department) continue
+      if (department === TI) continue
+
+      const name = displayName.includes(' - ')
+        ? displayName.split(' - ')[0].trim()
+        : displayName.trim()
+
+      if (!name) continue
+
+      results.push({ name, area: department })
+    }
+
+    return results
+  } finally {
+    await client.unbind()
+  }
+}
+
+module.exports = { findUserByEmail, authenticateUser, syncUsersFromAD, syncContactsFromAD }

@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client')
+const { syncContactsFromAD } = require('../services/ldap.service')
 const prisma = new PrismaClient()
 
 const TI_AREA = 'Tecnologia da Informação'
@@ -73,4 +74,36 @@ const deleteContact = async (req, res) => {
   }
 }
 
-module.exports = { listContacts, createContact, deleteContact }
+const syncContacts = async (req, res) => {
+  try {
+    const requester = req.user
+    const isAllowed = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+    if (!isAllowed) {
+      return res.status(403).json({ error: 'Sem permissão para sincronizar contatos' })
+    }
+
+    const entries = await syncContactsFromAD()
+    let created = 0
+    let skipped = 0
+
+    for (const entry of entries) {
+      const existing = await prisma.contact.findFirst({
+        where: { name: entry.name, area: entry.area }
+      })
+      if (existing) { skipped++; continue }
+      await prisma.contact.create({ data: { name: entry.name, area: entry.area } })
+      created++
+    }
+
+    return res.status(200).json({
+      message: `Sincronização concluída: ${created} contatos adicionados, ${skipped} já existiam.`,
+      created,
+      skipped
+    })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Erro ao sincronizar contatos do AD' })
+  }
+}
+
+module.exports = { listContacts, createContact, deleteContact, syncContacts }
