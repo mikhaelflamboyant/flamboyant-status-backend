@@ -1,6 +1,21 @@
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
+const compression = require('compression')
+const rateLimit = require('express-rate-limit')
+
 const app = express()
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Muitas tentativas. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+app.use(helmet({ contentSecurityPolicy: false }))
+app.use(compression())
 
 app.use(cors({
   origin: [
@@ -20,8 +35,8 @@ app.use((req, res, next) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok', message: 'Servidor no ar' }))
 
-app.use('/auth', require('./routes/auth.routes'))
-app.use('/auth/ldap', require('./routes/ldap.routes'))
+app.use('/auth', authLimiter, require('./routes/auth.routes'))
+app.use('/auth/ldap', authLimiter, require('./routes/ldap.routes'))
 app.use('/auth/saml', require('./routes/saml.routes'))
 app.use('/users', require('./routes/users.routes'))
 app.use('/projects', require('./routes/projects.routes'))
