@@ -15,7 +15,6 @@
     "@node-saml/passport-saml": "^5.1.0",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^6.19.2",
-    "@supabase/supabase-js": "^2.100.1",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
@@ -28,7 +27,6 @@
     "ldapts": "^8.1.7",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.4",
-    "p": "^0.2.0",
     "passport": "^0.7.0",
     "pg": "^8.20.0",
     "zod": "^4.4.3"
