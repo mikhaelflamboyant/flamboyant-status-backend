@@ -12,7 +12,7 @@ model User {
   email      String   @unique
   name       String
   project_requests ProjectRequester[]
-  password   String
+  password   String?
   role       String   @default("ANALISTA")
   status     String   @default("PENDENTE")
   area       String   @default("")
