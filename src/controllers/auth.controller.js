@@ -89,6 +89,9 @@ const login = async (req, res) => {
       return res.status(403).json({ error: 'Seu cadastro foi recusado. Entre em contato com o administrador.' })
     }
 
+    if (!user.password) {
+      return res.status(401).json({ error: 'Use suas credenciais do Windows para entrar.' })
+    }
     const passwordMatch = await bcrypt.compare(password, user.password)
     if (!passwordMatch) {
       return res.status(401).json({ error: 'E-mail ou senha incorretos' })

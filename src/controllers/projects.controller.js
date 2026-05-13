@@ -23,6 +23,7 @@ const listProjects = async (req, res) => {
         current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] },
         OR: [
           { requesters: { some: { user_id: requester.id } } },
+          { members: { some: { user_id: requester.id } } },
         ]
       }
     }
