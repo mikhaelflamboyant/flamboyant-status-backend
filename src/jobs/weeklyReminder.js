@@ -94,7 +94,28 @@ const startWeeklyReminderJob = () => {
     }
   }, { timezone: 'America/Sao_Paulo' })
 
-  console.log('[CRON] Jobs iniciados — lembretes às sextas 9h, SUPORTE diário à 1h')
+  cron.schedule('0 1 * * *', async () => {
+    try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const result = await prisma.project.updateMany({
+        where: {
+          go_live: { lt: today },
+          traffic_light: 'VERDE',
+          archived: false,
+          origin: 'NORMAL',
+        },
+        data: { traffic_light: 'VERMELHO' }
+      })
+      if (result.count > 0) {
+        console.log(`[CRON] ${result.count} projeto(s) com farol atualizado para VERMELHO`)
+      }
+    } catch (err) {
+      console.error('[CRON] Erro ao atualizar faróis:', err)
+    }
+  }, { timezone: 'America/Sao_Paulo' })
+
+  console.log('[CRON] Jobs iniciados - lembretes às sextas 9h, SUPORTE diário à 1h')
 }
 
 module.exports = { startWeeklyReminderJob }

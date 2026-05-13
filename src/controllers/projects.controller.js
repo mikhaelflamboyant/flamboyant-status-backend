@@ -58,19 +58,6 @@ const listProjects = async (req, res) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    for (const project of projects) {
-      if (!project.go_live) continue
-      const goLiveDate = new Date(project.go_live)
-      goLiveDate.setHours(0, 0, 0, 0)
-      if (goLiveDate < today && project.traffic_light === 'VERDE') {
-        await prisma.project.update({
-          where: { id: project.id },
-          data: { traffic_light: 'VERMELHO' }
-        })
-        project.traffic_light = 'VERMELHO'
-      }
-    }
-
     return res.status(200).json(projects)
   } catch (err) {
     console.error(err)
