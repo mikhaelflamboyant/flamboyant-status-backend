@@ -1,9 +1,8 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../lib/prisma')
 const { notifyPendingUser } = require('../services/notifications.service')
 
-const prisma = new PrismaClient()
 const ALLOWED_DOMAIN = 'flamboyant.com.br'
 
 const validatePassword = (password) => {

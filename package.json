@@ -30,7 +30,8 @@
     "nodemailer": "^8.0.4",
     "p": "^0.2.0",
     "passport": "^0.7.0",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

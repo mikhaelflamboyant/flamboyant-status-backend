@@ -1,6 +1,5 @@
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../lib/prisma')
 const { syncContactsFromAD } = require('../services/ldap.service')
-const prisma = new PrismaClient()
 
 const TI_AREA = 'Tecnologia da Informação'
 const CAN_DELETE = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']

@@ -51,5 +51,9 @@ app.use('/webhook', require('./routes/webhook.routes'))
 app.use('/api-tokens', require('./routes/apitoken.routes'))
 app.use('/public', require('./routes/public.routes'))
 app.use('/contacts', require('./routes/contacts.routes'))
+app.use((err, req, res, next) => {
+  console.error(err)
+  res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor' })
+})
 
 module.exports = app
