@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken')
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 
 const samlCallback = async (req, res) => {
   try {

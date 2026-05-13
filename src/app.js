@@ -3,6 +3,7 @@ const cors = require('cors')
 const helmet = require('helmet')
 const compression = require('compression')
 const rateLimit = require('express-rate-limit')
+const logger = require('./lib/logger')
 
 const app = express()
 
@@ -52,7 +53,7 @@ app.use('/api-tokens', require('./routes/apitoken.routes'))
 app.use('/public', require('./routes/public.routes'))
 app.use('/contacts', require('./routes/contacts.routes'))
 app.use((err, req, res, next) => {
-  console.error(err)
+  logger.error({ err, url: req.url, method: req.method }, 'Erro não tratado')
   res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor' })
 })
 

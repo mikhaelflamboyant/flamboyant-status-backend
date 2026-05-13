@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
@@ -28,7 +29,7 @@ const getRequirement = async (req, res) => {
 
     return res.status(200).json(requirement)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao buscar requisitos' })
   }
 }
@@ -76,7 +77,7 @@ const createRequirement = async (req, res) => {
 
     return res.status(201).json(requirement)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar requisitos' })
   }
 }
@@ -139,7 +140,7 @@ const updateRequirement = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar requisitos' })
   }
 }

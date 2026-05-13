@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const prisma = require('../lib/prisma')
 const { notifyPendingUser } = require('../services/notifications.service')
+const logger = require('../lib/logger')
 
 const ALLOWED_DOMAIN = 'flamboyant.com.br'
 
@@ -63,7 +64,7 @@ const register = async (req, res) => {
       user: { id: user.id, email: user.email }
     })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao realizar cadastro' })
   }
 }
@@ -108,7 +109,7 @@ const login = async (req, res) => {
       user: { id: user.id, email: user.email, name: user.name, role: user.role, area: user.area, created_at: user.created_at }
     })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao realizar login' })
   }
 }
@@ -123,7 +124,7 @@ const forgotPassword = async (req, res) => {
 
     return res.status(200).json({ message: 'Se o e-mail existir, você receberá as instruções em breve.' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao processar solicitação' })
   }
 }

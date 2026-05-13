@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 
 const TI_AREA = 'Tecnologia da Informação'
 const MANAGER_ROLES = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR']
@@ -195,7 +196,7 @@ const getDashboard = async (req, res) => {
       go_live_timeline: goLiveByMonth,
     })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao carregar dashboard' })
   }
 }
@@ -284,7 +285,7 @@ const getUsers = async (req, res) => {
 
 return res.status(200).json({ by_area: byArea, without_projects: usersWithoutProjects })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao carregar usuários' })
   }
 }

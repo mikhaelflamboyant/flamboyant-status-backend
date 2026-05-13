@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 const { notifyNewStatus } = require('../services/notifications.service')
+const logger = require('../lib/logger')
 
 const listStatusUpdates = async (req, res) => {
   try {
@@ -23,7 +24,7 @@ const listStatusUpdates = async (req, res) => {
 
     return res.status(200).json(updates)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar status reports' })
   }
 }
@@ -46,7 +47,7 @@ const getStatusUpdateById = async (req, res) => {
 
     return res.status(200).json(update)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao buscar status report' })
   }
 }
@@ -131,7 +132,7 @@ const createStatusUpdate = async (req, res) => {
 
     return res.status(201).json(update)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar status report' })
   }
 }
@@ -174,7 +175,7 @@ const updateStatusUpdate = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao editar status report' })
   }
 }
@@ -198,7 +199,7 @@ const deleteStatusUpdate = async (req, res) => {
     await touchProject(update.project_id)
     return res.status(200).json({ message: 'Status report excluído com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir status report' })
   }
 }

@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma')
 const crypto = require('crypto')
+const logger = require('../lib/logger')
 
 const TI_AREA = 'Tecnologia da Informação'
 const ALLOWED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
@@ -22,7 +23,7 @@ const listTokens = async (req, res) => {
 
     return res.status(200).json(tokens)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar tokens' })
   }
 }
@@ -42,7 +43,7 @@ const listAllTokens = async (req, res) => {
 
     return res.status(200).json(tokens)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar histórico de tokens' })
   }
 }
@@ -68,7 +69,7 @@ const createToken = async (req, res) => {
 
     return res.status(201).json(apiToken)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar token' })
   }
 }
@@ -91,7 +92,7 @@ const revokeToken = async (req, res) => {
 
     return res.status(200).json({ message: 'Token revogado com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao revogar token' })
   }
 }

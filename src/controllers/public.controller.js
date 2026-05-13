@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 
 const listPublicProjects = async (req, res) => {
   try {
@@ -30,7 +31,7 @@ const listPublicProjects = async (req, res) => {
 
     return res.status(200).json(projects)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar projetos públicos' })
   }
 }
@@ -66,7 +67,7 @@ const getPublicProject = async (req, res) => {
 
     return res.status(200).json(project)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao buscar projeto' })
   }
 }
@@ -90,7 +91,7 @@ const listPublicArchivedProjects = async (req, res) => {
 
     return res.status(200).json(projects)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar projetos arquivados públicos' })
   }
 }

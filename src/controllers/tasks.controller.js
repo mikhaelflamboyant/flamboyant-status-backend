@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
@@ -46,7 +47,7 @@ const listTasks = async (req, res) => {
 
     return res.status(200).json(tasks)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar tarefas' })
   }
 }
@@ -87,7 +88,7 @@ const createTask = async (req, res) => {
 
     return res.status(201).json(task)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar tarefa' })
   }
 }
@@ -146,7 +147,7 @@ const updateTask = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar tarefa' })
   }
 }
@@ -175,7 +176,7 @@ const completeTask = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao concluir tarefa' })
   }
 }
@@ -197,7 +198,7 @@ const deleteTask = async (req, res) => {
     await touchProject(task.project_id)
     return res.status(200).json({ message: 'Tarefa excluída com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir tarefa' })
   }
 }

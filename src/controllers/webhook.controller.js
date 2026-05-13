@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma')
 const { notifyNewProject } = require('../services/notifications.service')
+const logger = require('../lib/logger')
 
 const freshserviceWebhook = async (req, res) => {
   try {

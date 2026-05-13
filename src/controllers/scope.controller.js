@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
@@ -56,7 +57,7 @@ const listScopeItems = async (req, res) => {
 
     return res.status(200).json(result)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar escopo' })
   }
 }
@@ -100,7 +101,7 @@ const createScopeItem = async (req, res) => {
 
     return res.status(201).json(item)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar item de escopo' })
   }
 }
@@ -178,7 +179,7 @@ const updateScopeItem = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar item de escopo' })
   }
 }
@@ -211,7 +212,7 @@ const deleteScopeItem = async (req, res) => {
 
     return res.status(200).json({ ...updated, message: 'Exclusão enviada para aprovação' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir item de escopo' })
   }
 }
@@ -235,7 +236,7 @@ const requestApproval = async (req, res) => {
 
     return res.status(200).json({ message: 'Aprovação solicitada com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao solicitar aprovação' })
   }
 }
@@ -292,7 +293,7 @@ const approveScope = async (req, res) => {
     await touchProject(project_id)
     return res.status(200).json({ message: 'Escopo aprovado com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao aprovar escopo' })
   }
 }
@@ -326,7 +327,7 @@ const rejectScope = async (req, res) => {
 
     return res.status(200).json({ message: 'Escopo rejeitado' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao rejeitar escopo' })
   }
 }
@@ -433,7 +434,7 @@ const approveItems = async (req, res) => {
     await touchProject(project_id)
     return res.status(200).json({ message: 'Itens aprovados com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao aprovar itens' })
   }
 }
@@ -475,7 +476,7 @@ const rejectItems = async (req, res) => {
 
     return res.status(200).json({ message: 'Itens rejeitados com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao rejeitar itens' })
   }
 }

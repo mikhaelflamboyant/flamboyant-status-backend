@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma')
 const { syncContactsFromAD } = require('../services/ldap.service')
+const logger = require('../lib/logger')
 
 const TI_AREA = 'Tecnologia da Informação'
 const CAN_DELETE = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
@@ -16,7 +17,7 @@ const listContacts = async (req, res) => {
 
     return res.status(200).json(contacts)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar contatos' })
   }
 }
@@ -43,7 +44,7 @@ const createContact = async (req, res) => {
 
     return res.status(201).json(contact)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar contato' })
   }
 }
@@ -68,7 +69,7 @@ const deleteContact = async (req, res) => {
     await prisma.contact.delete({ where: { id } })
     return res.status(200).json({ message: 'Contato excluído com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir contato' })
   }
 }
@@ -100,7 +101,7 @@ const syncContacts = async (req, res) => {
       skipped
     })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao sincronizar contatos do AD' })
   }
 }

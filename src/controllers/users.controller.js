@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 
 const HIERARCHY = {
   ANALISTA_MASTER: 7,
@@ -27,7 +28,7 @@ const listUsers = async (req, res) => {
     })
     return res.status(200).json(users)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar usuários' })
   }
 }
@@ -45,7 +46,7 @@ const getUserById = async (req, res) => {
 
     return res.status(200).json(user)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao buscar usuário' })
   }
 }
@@ -79,7 +80,7 @@ const updateUserRole = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar perfil' })
   }
 }
@@ -92,7 +93,7 @@ const listPendingUsers = async (req, res) => {
     })
     return res.status(200).json(users)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar usuários pendentes' })
   }
 }
@@ -117,7 +118,7 @@ const approveUser = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao aprovar usuário' })
   }
 }
@@ -142,7 +143,7 @@ const rejectUser = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao recusar usuário' })
   }
 }
@@ -182,7 +183,7 @@ const deleteUser = async (req, res) => {
     await prisma.user.delete({ where: { id } })
         return res.status(200).json({ message: 'Usuário excluído com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir usuário' })
   }
 }

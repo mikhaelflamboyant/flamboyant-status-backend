@@ -1,13 +1,10 @@
 const cron = require('node-cron')
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../lib/prisma')
 const { sendWeeklyReminderEmail } = require('../services/email.service')
-
-const prisma = new PrismaClient()
 
 const startWeeklyReminderJob = () => {
   cron.schedule('0 9 * * 5', async () => {
     console.log('[CRON] Rodando lembrete semanal...')
-
     try {
       const oneWeekAgo = new Date()
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
@@ -59,7 +56,7 @@ const startWeeklyReminderJob = () => {
     } catch (err) {
       console.error('[CRON] Erro ao enviar lembretes:', err)
     }
-  }, { timezone: 'America/Sao_Paulo' }) // ← fechamento correto do primeiro cron
+  }, { timezone: 'America/Sao_Paulo' })
 
   cron.schedule('0 1 * * *', async () => {
     try {
@@ -75,15 +72,14 @@ const startWeeklyReminderJob = () => {
       })
 
       for (const project of projects) {
-        await prisma.project.update({
-          where: { id: project.id },
-          data: {
-            current_phase: 'SUPORTE',
-            archived: true,
-            archived_at: new Date(),
-            completion_pct: 100,
-          }
-        })
+        await prisma.$executeRaw`
+          UPDATE "Project"
+          SET "current_phase" = 'SUPORTE',
+              "archived" = true,
+              "archived_at" = NOW(),
+              "completion_pct" = 100
+          WHERE "id" = ${project.id}
+        `
       }
 
       if (projects.length > 0) {
@@ -98,24 +94,23 @@ const startWeeklyReminderJob = () => {
     try {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      const result = await prisma.project.updateMany({
-        where: {
-          go_live: { lt: today },
-          traffic_light: 'VERDE',
-          archived: false,
-          origin: 'NORMAL',
-        },
-        data: { traffic_light: 'VERMELHO' }
-      })
-      if (result.count > 0) {
-        console.log(`[CRON] ${result.count} projeto(s) com farol atualizado para VERMELHO`)
+      const result = await prisma.$executeRaw`
+        UPDATE "Project"
+        SET "traffic_light" = 'VERMELHO'
+        WHERE "go_live" < ${today}
+          AND "traffic_light" = 'VERDE'
+          AND "archived" = false
+          AND "origin" = 'NORMAL'
+      `
+      if (result > 0) {
+        console.log(`[CRON] ${result} projeto(s) com farol atualizado para VERMELHO`)
       }
     } catch (err) {
       console.error('[CRON] Erro ao atualizar faróis:', err)
     }
   }, { timezone: 'America/Sao_Paulo' })
 
-  console.log('[CRON] Jobs iniciados - lembretes às sextas 9h, SUPORTE diário à 1h')
+  console.log('[CRON] Jobs iniciados — lembretes às sextas 9h, SUPORTE diário à 1h')
 }
 
 module.exports = { startWeeklyReminderJob }

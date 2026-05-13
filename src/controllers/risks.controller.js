@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 
 const createRisk = async (req, res) => {
   try {
@@ -33,7 +34,7 @@ const createRisk = async (req, res) => {
 
     return res.status(201).json(risk)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar risco' })
   }
 }
@@ -74,7 +75,7 @@ const updateRisk = async (req, res) => {
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao editar risco' })
   }
 }
@@ -106,7 +107,7 @@ const deleteRisk = async (req, res) => {
     await prisma.risk.delete({ where: { id } })
     return res.status(200).json({ message: 'Risco excluído com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir risco' })
   }
 }

@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma')
+const logger = require('../lib/logger')
 
 const listNotifications = async (req, res) => {
   try {
@@ -12,7 +13,7 @@ const listNotifications = async (req, res) => {
 
     return res.status(200).json(notifications)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar notificações' })
   }
 }
@@ -34,7 +35,7 @@ const markAsRead = async (req, res) => {
 
     return res.status(200).json({ message: 'Notificação marcada como lida' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao marcar notificação como lida' })
   }
 }
@@ -50,7 +51,7 @@ const markAllAsRead = async (req, res) => {
 
     return res.status(200).json({ message: 'Todas as notificações marcadas como lidas' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao marcar notificações como lidas' })
   }
 }

@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma')
 const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
+const logger = require('../lib/logger')
 
 const listProjects = async (req, res) => {
   try {
@@ -60,7 +61,7 @@ const listProjects = async (req, res) => {
 
     return res.status(200).json(projects)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar projetos' })
   }
 }
@@ -137,7 +138,7 @@ const listArchivedProjects = async (req, res) => {
 
     return res.status(200).json(projects)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar projetos arquivados' })
   }
 }
@@ -179,7 +180,7 @@ const getProjectById = async (req, res) => {
 
     return res.status(200).json(project)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao buscar projeto' })
   }
 }
@@ -294,7 +295,7 @@ const createProject = async (req, res) => {
 
     return res.status(201).json(project)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar projeto' })
   }
 }
@@ -433,32 +434,61 @@ const updateProject = async (req, res) => {
     }
 
     if (member_ids !== undefined || member_names !== undefined) {
-      await prisma.projectMember.deleteMany({ where: { project_id: id } })
-      for (const user_id of (member_ids || [])) {
+      const existingMembers = await prisma.projectMember.findMany({ where: { project_id: id } })
+      const existingUserIds = existingMembers.filter(m => m.user_id).map(m => m.user_id)
+      const newUserIds = member_ids || []
+
+      const toAdd = newUserIds.filter(uid => !existingUserIds.includes(uid))
+      const toRemove = existingUserIds.filter(uid => !newUserIds.includes(uid))
+
+      if (toRemove.length > 0) {
+        await prisma.projectMember.deleteMany({ where: { project_id: id, user_id: { in: toRemove } } })
+      }
+      for (const user_id of toAdd) {
         await prisma.projectMember.create({ data: { project: { connect: { id } }, user: { connect: { id: user_id } } } })
       }
+      await prisma.projectMember.deleteMany({ where: { project_id: id, user_id: null } })
       for (const person of (member_names || [])) {
         await prisma.projectMember.create({ data: { project: { connect: { id } }, manual_name: person.name, manual_area: person.area } })
       }
     }
 
     if (costs !== undefined) {
-      await prisma.projectCost.deleteMany({ where: { project_id: id } })
+      const existingCosts = await prisma.projectCost.findMany({ where: { project_id: id } })
+      const existingNames = existingCosts.map(c => c.name)
+      const newNames = costs.map(c => c.name)
+
+      const toRemove = existingCosts.filter(c => !newNames.includes(c.name))
+      if (toRemove.length > 0) {
+        await prisma.projectCost.deleteMany({ where: { id: { in: toRemove.map(c => c.id) } } })
+      }
+
       for (const cost of costs) {
-        await prisma.projectCost.create({
-          data: {
-            project_id: id,
-            name: cost.name,
-            budget_planned: parseFloat(cost.budget_planned),
-            budget_actual: cost.budget_actual ? parseFloat(cost.budget_actual) : null,
-          }
-        })
+        const existing = existingCosts.find(c => c.name === cost.name)
+        if (existing) {
+          await prisma.projectCost.update({
+            where: { id: existing.id },
+            data: {
+              budget_planned: parseFloat(cost.budget_planned),
+              budget_actual: cost.budget_actual ? parseFloat(cost.budget_actual) : null,
+            }
+          })
+        } else {
+          await prisma.projectCost.create({
+            data: {
+              project_id: id,
+              name: cost.name,
+              budget_planned: parseFloat(cost.budget_planned),
+              budget_actual: cost.budget_actual ? parseFloat(cost.budget_actual) : null,
+            }
+          })
+        }
       }
     }
 
     return res.status(200).json(updated)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar projeto' })
   }
 }
@@ -488,7 +518,7 @@ const deleteProject = async (req, res) => {
     await prisma.project.delete({ where: { id } })
     return res.status(200).json({ message: 'Projeto excluído com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir projeto' })
   }
 }
@@ -516,7 +546,7 @@ const assignMember = async (req, res) => {
 
     return res.status(201).json(member)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao atribuir membro' })
   }
 }
@@ -605,7 +635,7 @@ const approveFreshservice = async (req, res) => {
 
     return res.status(200).json(project)
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao aprovar projeto' })
   }
 }
@@ -616,7 +646,7 @@ const rejectFreshservice = async (req, res) => {
     await prisma.project.delete({ where: { id } })
     return res.status(200).json({ message: 'Solicitação rejeitada e removida' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao rejeitar projeto' })
   }
 }
@@ -727,7 +757,7 @@ const assignResponsible = async (req, res) => {
 
     return res.status(200).json({ message: 'Responsável atribuído com sucesso' })
   } catch (err) {
-    console.error(err)
+    logger.error(err)
     return res.status(500).json({ error: 'Erro ao atribuir responsável' })
   }
 }

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken')
 const prisma = require('../lib/prisma')
 const { authenticateUser, syncUsersFromAD } = require('../services/ldap.service')
+const logger = require('../lib/logger')
 
 const ldapLogin = async (req, res) => {
   try {

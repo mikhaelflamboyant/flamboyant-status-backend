@@ -6,9 +6,10 @@ const validate = (schema) => (req, res, next) => {
     next()
   } catch (err) {
     if (err instanceof ZodError) {
+      const issues = err.issues || err.errors || []
       return res.status(400).json({
         error: 'Dados inválidos',
-        details: err.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        details: issues.map(e => ({ field: e.path.join('.'), message: e.message }))
       })
     }
     next(err)
