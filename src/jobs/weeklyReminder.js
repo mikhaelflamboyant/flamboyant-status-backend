@@ -12,7 +12,7 @@ const startWeeklyReminderJob = () => {
       const activeProjects = await prisma.project.findMany({
         where: {
           archived: false,
-          current_phase: { not: 'ENTREGUE' }
+          current_phase: { notIn: ['ENTREGUE', 'SUPORTE', 'BACKLOG'] }
         },
         include: {
           owner: true,
@@ -65,7 +65,7 @@ const startWeeklyReminderJob = () => {
 
       const projects = await prisma.project.findMany({
         where: {
-          current_phase: 'ENTREGUE',
+          current_phase: 'SUPORTE',
           archived: false,
           delivered_at: { lte: thirtyDaysAgo }
         }
@@ -74,7 +74,7 @@ const startWeeklyReminderJob = () => {
       for (const project of projects) {
         await prisma.$executeRaw`
           UPDATE "Project"
-          SET "current_phase" = 'SUPORTE',
+          SET "current_phase" = 'ENTREGUE',
               "archived" = true,
               "archived_at" = NOW(),
               "completion_pct" = 100
@@ -83,10 +83,10 @@ const startWeeklyReminderJob = () => {
       }
 
       if (projects.length > 0) {
-        console.log(`[CRON] ${projects.length} projeto(s) movidos para SUPORTE`)
+        console.log(`[CRON] ${projects.length} projeto(s) movidos para ENTREGUE`)
       }
     } catch (err) {
-      console.error('[CRON] Erro ao mover projetos para SUPORTE:', err)
+      console.error('[CRON] Erro ao mover projetos para ENTREGUE:', err)
     }
   }, { timezone: 'America/Sao_Paulo' })
 

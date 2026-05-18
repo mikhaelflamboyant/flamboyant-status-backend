@@ -70,7 +70,7 @@ const listGoLiveProjects = async (req, res) => {
   try {
     const projects = await prisma.project.findMany({
       where: {
-        current_phase: 'ENTREGUE',
+        current_phase: 'SUPORTE',
         archived: false,
         origin: 'NORMAL',
       },
@@ -372,20 +372,20 @@ const updateProject = async (req, res) => {
       ...(completion_pct !== undefined && { completion_pct }),
     }
 
-    if (current_phase === 'ENTREGUE') {
+    if (current_phase === 'SUPORTE') {
       dataToUpdate.completion_pct = 100
       dataToUpdate.delivered_at = new Date()
       dataToUpdate.archived = false
       dataToUpdate.archived_at = null
     }
 
-    if (current_phase === 'SUPORTE') {
+    if (current_phase === 'ENTREGUE') {
       dataToUpdate.archived = true
       dataToUpdate.archived_at = new Date()
       dataToUpdate.completion_pct = 100
     }
 
-    if (current_phase && current_phase !== 'ENTREGUE' && current_phase !== 'SUPORTE') {
+    if (current_phase && current_phase !== 'SUPORTE' && current_phase !== 'ENTREGUE') {
       dataToUpdate.archived = false
       dataToUpdate.archived_at = null
     }
