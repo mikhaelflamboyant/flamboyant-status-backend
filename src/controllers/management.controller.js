@@ -18,7 +18,11 @@ const getDashboard = async (req, res) => {
 
     const [activeProjects, archivedProjects, backlogProjects, goLiveProjects] = await Promise.all([
       prisma.project.findMany({
-        where: { archived: false, origin: 'NORMAL' },
+        where: {
+          archived: false,
+          origin: 'NORMAL',
+          current_phase: { notIn: ['BACKLOG', 'SUPORTE'] }
+        },
         select: {
           id: true, traffic_light: true, current_phase: true,
           business_unit: true, area: true, completion_pct: true,
@@ -36,7 +40,7 @@ const getDashboard = async (req, res) => {
         orderBy: { created_at: 'desc' }
       }),
       prisma.project.findMany({
-        where: { current_phase: 'ENTREGUE', archived: false, origin: 'NORMAL' },
+        where: { current_phase: 'SUPORTE', archived: false, origin: 'NORMAL' },
         select: {
           id: true, title: true, area: true, business_unit: true,
           traffic_light: true, current_phase: true, go_live: true,
@@ -176,7 +180,8 @@ const getDashboard = async (req, res) => {
       go_live_projects: goLiveProjects,
       active_projects: activeProjects,
       totals: {
-        active: activeProjects.length,
+        active: activeProjects.length + goLiveProjects.length,
+        active_only: activeProjects.length,
         archived: archivedProjects,
         overdue,
         avg_completion: avgCompletion,
