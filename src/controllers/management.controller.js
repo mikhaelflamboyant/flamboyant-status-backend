@@ -66,6 +66,10 @@ const getDashboard = async (req, res) => {
     const pdtiTotal = pdtiProjects.length
     const pdtiOnTime = pdtiProjects.filter(p => p.traffic_light === 'VERDE').length
 
+    const inExecution = activeProjects.filter(p =>
+      ['DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE'].includes(p.current_phase)
+    ).length
+
     const phases = [
       'RECEBIDA', 'ENTREVISTA_SOLICITANTE', 'LEVANTAMENTO_REQUISITOS',
       'ANALISE_SOLUCAO', 'DESENVOLVIMENTO', 'TESTES',
@@ -192,6 +196,7 @@ const getDashboard = async (req, res) => {
       totals: {
         active: activeProjects.length + goLiveProjects.length,
         active_only: activeProjects.length,
+        in_execution: inExecution,
         pdti_total: pdtiTotal,
         pdti_on_time: pdtiOnTime,
         archived: archivedProjects,
