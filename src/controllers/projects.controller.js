@@ -8,20 +8,20 @@ const listProjects = async (req, res) => {
     const TI_AREA = 'Tecnologia da Informação'
     const isFromTI = requester.area === TI_AREA
 
-    let whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] } }
+    let whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] } }
 
     if (requester.role === 'ANALISTA_MASTER' || requester.role === 'ANALISTA_TESTADOR') {
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] } }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] } }
     } else if ((requester.role === 'GERENTE' || requester.role === 'COORDENADOR') && isFromTI) {
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] } }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] } }
     } else if (['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR'].includes(requester.role)) {
       const user = await prisma.user.findUnique({ where: { id: requester.id } })
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] }, area: { contains: user.area } }
+      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] }, area: { contains: user.area } }
     } else {
       whereClause = {
         archived: false,
         origin: 'NORMAL',
-        current_phase: { notIn: ['ENTREGUE', 'BACKLOG'] },
+        current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] },
         OR: [
           { requesters: { some: { user_id: requester.id } } },
           { members: { some: { user_id: requester.id } } },

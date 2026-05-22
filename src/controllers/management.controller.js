@@ -16,7 +16,7 @@ const getDashboard = async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para acessar o painel de gestão' })
     }
 
-    const [activeProjects, archivedProjects, backlogProjects, goLiveProjects] = await Promise.all([
+    const [activeProjects, archivedProjects, backlogProjects, goLiveProjects, finishedProjects] = await Promise.all([
       prisma.project.findMany({
         where: {
           archived: false,
@@ -48,6 +48,14 @@ const getDashboard = async (req, res) => {
         },
         orderBy: { created_at: 'desc' }
       }),
+      prisma.project.findMany({
+        where: { archived: true, origin: 'NORMAL' },
+        select: {
+          id: true, traffic_light: true, current_phase: true,
+          business_unit: true, area: true, completion_pct: true,
+          go_live: true, title: true, created_at: true
+        }
+      }),
     ])
 
     const byFarol = {
@@ -61,6 +69,7 @@ const getDashboard = async (req, res) => {
     const pdtiProjects = [
       ...activeProjects.filter(p => PDTI_PHASES.includes(p.current_phase)),
       ...goLiveProjects,
+      ...finishedProjects,
     ]
 
     const pdtiTotal = pdtiProjects.length
