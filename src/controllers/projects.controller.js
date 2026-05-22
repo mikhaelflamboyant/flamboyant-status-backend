@@ -773,10 +773,90 @@ const assignResponsible = async (req, res) => {
   }
 }
 
+const cancelProject = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+    const requester = req.user
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Motivo do cancelamento é obrigatório' })
+    }
+
+    const project = await prisma.project.findUnique({ where: { id } })
+    if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })
+
+    const updated = await prisma.project.update({
+      where: { id },
+      data: {
+        current_phase: 'CANCELADO',
+        archived: true,
+        archived_at: new Date(),
+        description: project.description + `\n\n[CANCELADO em ${new Date().toLocaleDateString('pt-BR')} por ${requester.name}]\nMotivo: ${reason.trim()}`,
+      }
+    })
+
+    return res.status(200).json(updated)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao cancelar projeto' })
+  }
+}
+
+const listCancelledProjects = async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      where: { current_phase: 'CANCELADO', archived: true },
+      include: {
+        requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
+        owner: { select: { id: true, name: true, email: true } },
+        members: { include: { user: { select: { id: true, name: true, email: true } } } },
+        costs: true,
+      },
+      orderBy: { archived_at: 'desc' }
+    })
+    return res.status(200).json(projects)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao listar projetos cancelados' })
+  }
+}
+
+const restoreProject = async (req, res) => {
+  try {
+    const { id } = req.params
+    const requester = req.user
+
+    const TI_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
+    const isFromTI = requester.area === 'Tecnologia da Informação' || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+
+    if (!TI_ROLES.includes(requester.role) || !isFromTI) {
+      return res.status(403).json({ error: 'Sem permissão para restaurar projetos' })
+    }
+
+    const project = await prisma.project.findUnique({ where: { id } })
+    if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })
+
+    const updated = await prisma.project.update({
+      where: { id },
+      data: {
+        current_phase: 'RECEBIDA',
+        archived: false,
+        archived_at: null,
+      }
+    })
+
+    return res.status(200).json(updated)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao restaurar projeto' })
+  }
+}
+
 module.exports = {
   listProjects, listArchivedProjects, listGoLiveProjects, listBacklogProjects,
   getProjectById, createProject, updateProject,
   deleteProject, assignMember, archiveExpiredProjects,
   approveFreshservice, rejectFreshservice, listFreshserviceRequests,
-  assignResponsible
+  assignResponsible, cancelProject, listCancelledProjects, restoreProject
 }
