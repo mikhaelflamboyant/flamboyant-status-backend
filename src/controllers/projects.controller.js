@@ -527,6 +527,11 @@ const deleteProject = async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
     }
 
+    const statusCount = await prisma.statusUpdate.count({ where: { project_id: id } })
+    if (statusCount > 0) {
+      return res.status(400).json({ error: 'Não é possível excluir um projeto que possui status reports cadastrados. Você pode cancelar o projeto.' })
+    }
+
     await prisma.project.delete({ where: { id } })
     return res.status(200).json({ message: 'Projeto excluído com sucesso' })
   } catch (err) {
