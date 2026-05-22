@@ -372,6 +372,17 @@ const updateProject = async (req, res) => {
       ...(completion_pct !== undefined && { completion_pct }),
     }
 
+    if (go_live) {
+      const newGoLive = new Date(go_live)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (newGoLive > today) {
+        dataToUpdate.traffic_light = 'VERDE'
+      } else {
+        dataToUpdate.traffic_light = 'VERMELHO'
+      }
+    }
+
     if (current_phase === 'SUPORTE') {
       dataToUpdate.completion_pct = 100
       dataToUpdate.delivered_at = new Date()

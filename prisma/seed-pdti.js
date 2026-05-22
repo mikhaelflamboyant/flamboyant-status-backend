@@ -4,7 +4,7 @@ const LEVEL_MAP = { A: 'A', B: 'B', C: 'C', D: 'D' }
 
 const AN_AREA_MAP = {
   'Inovação': 'Inovação',
-  'Marketing': 'Marketing Coorporativo',
+  'Marketing': 'Marketing Corporativo',
   'Relacionamento': 'Relacionamento',
   'TI': 'Tecnologia da Informação',
   'RH': 'Pessoas e Cultura',
