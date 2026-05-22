@@ -57,6 +57,9 @@ model Project {
   archived       Boolean   @default(false)
   archived_at    DateTime?
   delivered_at   DateTime?
+  cancel_reason  String?
+  cancelled_at   DateTime?
+  cancelled_by   String?
   created_at     DateTime  @default(now())
   updated_at     DateTime  @default(now()) @updatedAt
   tasks Task[]

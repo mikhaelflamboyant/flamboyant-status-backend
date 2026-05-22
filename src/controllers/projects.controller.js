@@ -96,16 +96,17 @@ const listArchivedProjects = async (req, res) => {
     const PRIVILEGED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
     const MANAGER_ROLES = ['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR']
 
-    let whereClause = { archived: true }
+    let whereClause = { archived: true, current_phase: { not: 'CANCELADO' } }
 
     if (PRIVILEGED_ROLES.includes(requester.role) && isFromTI) {
-      whereClause = { archived: true }
+      whereClause = { archived: true, current_phase: { not: 'CANCELADO' } }
     } else if (MANAGER_ROLES.includes(requester.role)) {
       const user = await prisma.user.findUnique({ where: { id: requester.id } })
-      whereClause = { archived: true, area: { contains: user.area } }
+      whereClause = { archived: true, current_phase: { not: 'CANCELADO' }, area: { contains: user.area } }
     } else {
       whereClause = {
         archived: true,
+        current_phase: { not: 'CANCELADO' },
         OR: [
           { requesters: { some: { user_id: requester.id } } },
           { members: { some: { user_id: requester.id } } }
@@ -792,7 +793,9 @@ const cancelProject = async (req, res) => {
         current_phase: 'CANCELADO',
         archived: true,
         archived_at: new Date(),
-        description: project.description + `\n\n[CANCELADO em ${new Date().toLocaleDateString('pt-BR')} por ${requester.name}]\nMotivo: ${reason.trim()}`,
+        cancel_reason: reason.trim(),
+        cancelled_at: new Date(),
+        cancelled_by: requester.name,
       }
     })
 
