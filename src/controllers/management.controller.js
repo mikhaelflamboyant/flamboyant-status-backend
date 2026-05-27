@@ -128,11 +128,15 @@ const getDashboard = async (req, res) => {
     const deliveredThisMonth = await prisma.project.count({
       where: {
         archived_at: { gte: startOfMonth },
-        OR: [
-          { archived: true },
-          { current_phase: 'ENTREGUE' },
-          { completion_pct: 100 }
-        ]
+        archived: true,
+        current_phase: { not: 'CANCELADO' }
+      }
+    })
+
+    const cancelledThisMonth = await prisma.project.count({
+      where: {
+        archived_at: { gte: startOfMonth },
+        current_phase: 'CANCELADO'
       }
     })
 
@@ -203,33 +207,34 @@ const getDashboard = async (req, res) => {
     const usersWithoutProjects = totalActiveUsers - allActiveUserIds.size
 
     return res.status(200).json({
-      backlog_projects: backlogProjects,
-      go_live_projects: goLiveProjects,
-      active_projects: activeProjects,
-      totals: {
-        active: activeProjects.length + goLiveProjects.length,
-        active_only: activeProjects.length,
-        in_execution: inExecution,
-        pdti_total: pdtiTotal,
-        pdti_on_time: pdtiOnTime,
-        archived: archivedProjects,
-        overdue,
-        avg_completion: avgCompletion,
-        no_recent_status: noRecentStatus,
-        no_go_live: noGoLive,
-        delivered_this_month: deliveredThisMonth,
-        users_without_projects: usersWithoutProjects,
-        backlog: backlogProjects.length,
-        go_live: goLiveProjects.length,
-      },
-      by_farol: byFarol,
-      by_phase: byPhase,
-      by_unit: byUnit,
-      by_level: levelMap,
-      avg_delivery_by_unit: avgDeliveryByUnit,
-      avg_delivery_global: globalAvgDelivery,
-      go_live_timeline: goLiveByMonth,
-    })
+  backlog_projects: backlogProjects,
+  go_live_projects: goLiveProjects,
+  active_projects: activeProjects,
+  totals: {
+    active: activeProjects.length + goLiveProjects.length,
+    active_only: activeProjects.length,
+    in_execution: inExecution,
+    pdti_total: pdtiTotal,
+    pdti_on_time: pdtiOnTime,
+    archived: archivedProjects,
+    overdue,
+    avg_completion: avgCompletion,
+    no_recent_status: noRecentStatus,
+    no_go_live: noGoLive,
+    users_without_projects: usersWithoutProjects,
+    backlog: backlogProjects.length,
+    go_live: goLiveProjects.length,
+    delivered_this_month: deliveredThisMonth,
+    cancelled_this_month: cancelledThisMonth,
+    },
+    by_farol: byFarol,
+    by_phase: byPhase,
+    by_unit: byUnit,
+    by_level: levelMap,
+    avg_delivery_by_unit: avgDeliveryByUnit,
+    avg_delivery_global: globalAvgDelivery,
+    go_live_timeline: goLiveByMonth,
+  })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao carregar dashboard' })
