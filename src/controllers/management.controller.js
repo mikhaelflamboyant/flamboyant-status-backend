@@ -49,7 +49,11 @@ const getDashboard = async (req, res) => {
         orderBy: { created_at: 'desc' }
       }),
       prisma.project.findMany({
-        where: { archived: true, origin: 'NORMAL' },
+        where: { 
+          archived: true, 
+          origin: 'NORMAL',
+          current_phase: { not: 'CANCELADO' }
+        },
         select: {
           id: true, traffic_light: true, current_phase: true,
           business_unit: true, area: true, completion_pct: true,
