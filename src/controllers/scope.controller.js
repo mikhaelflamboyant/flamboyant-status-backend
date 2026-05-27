@@ -342,7 +342,6 @@ const _notifyApprovers = async (project_id, requester, context) => {
   })
   const project = await prisma.project.findUnique({ where: { id: project_id } })
   for (const approver of approvers) {
-    if (approver.id === requester.id) continue
     await prisma.notification.create({
       data: {
         user_id: approver.id,
