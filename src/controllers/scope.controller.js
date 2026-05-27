@@ -23,7 +23,10 @@ const listScopeItems = async (req, res) => {
         tasks: { select: { id: true, completed: true } },
         created_by_user: { select: { id: true, name: true } }
       },
-      orderBy: { created_at: 'asc' }
+      orderBy: [
+        { start_date: 'asc' },
+        { created_at: 'asc' }
+      ]
     })
 
     const result = items.map(item => {
