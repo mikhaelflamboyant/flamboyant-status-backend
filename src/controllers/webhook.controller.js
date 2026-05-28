@@ -5,6 +5,7 @@ const logger = require('../lib/logger')
 const freshserviceWebhook = async (req, res) => {
   try {
     const payload = req.body
+    logger.info({ payload: JSON.stringify(payload) }, 'Webhook FreshService recebido')
 
     const title = payload.subject || payload.title || 'Projeto via FreshService'
     const description = payload.description_text || payload.description || 'Projeto criado via FreshService'
