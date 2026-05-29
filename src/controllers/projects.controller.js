@@ -802,6 +802,100 @@ const assignResponsible = async (req, res) => {
   }
 }
 
+const duplicateProject = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { title, include_team, include_schedule, include_costs } = req.body
+    const requester = req.user
+
+    const original = await prisma.project.findUnique({
+      where: { id },
+      include: {
+        requesters: true,
+        members: true,
+        costs: true,
+        scope_items: { where: { status: 'APROVADO' } },
+      }
+    })
+
+    if (!original) return res.status(404).json({ error: 'Projeto não encontrado' })
+
+    const copy = await prisma.project.create({
+      data: {
+        title: title || `Cópia — ${original.title}`,
+        area: original.area,
+        business_unit: original.business_unit,
+        execution_type: original.execution_type,
+        level: original.level,
+        complexity: original.complexity,
+        description: original.description,
+        requester_name: '',
+        traffic_light: 'VERDE',
+        current_phase: 'RECEBIDA',
+        origin: 'NORMAL',
+      }
+    })
+
+    if (include_team) {
+      for (const r of original.requesters) {
+        await prisma.projectRequester.create({
+          data: {
+            project_id: copy.id,
+            user_id: r.user_id || null,
+            manual_name: r.manual_name || null,
+            manual_area: r.manual_area || null,
+            type: r.type,
+          }
+        })
+      }
+      for (const m of original.members) {
+        await prisma.projectMember.create({
+          data: {
+            project_id: copy.id,
+            user_id: m.user_id || null,
+            manual_name: m.manual_name || null,
+            manual_area: m.manual_area || null,
+          }
+        })
+      }
+    }
+
+    if (include_schedule) {
+      for (const item of original.scope_items) {
+        await prisma.scopeItem.create({
+          data: {
+            project_id: copy.id,
+            title: item.title,
+            description: item.description,
+            stage: item.stage,
+            phase: item.phase,
+            completion_pct: 0,
+            status: 'RASCUNHO',
+            created_by: requester.id,
+          }
+        })
+      }
+    }
+
+    if (include_costs) {
+      for (const cost of original.costs) {
+        await prisma.projectCost.create({
+          data: {
+            project_id: copy.id,
+            name: cost.name,
+            budget_planned: cost.budget_planned,
+          }
+        })
+      }
+    }
+
+    return res.status(201).json(copy)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao duplicar projeto' })
+  }
+}
+
 const cancelProject = async (req, res) => {
   try {
     const { id } = req.params
@@ -889,5 +983,5 @@ module.exports = {
   getProjectById, createProject, updateProject,
   deleteProject, assignMember, archiveExpiredProjects,
   approveFreshservice, rejectFreshservice, listFreshserviceRequests,
-  assignResponsible, cancelProject, listCancelledProjects, restoreProject
+  assignResponsible, cancelProject, listCancelledProjects, restoreProject, duplicateProject
 }

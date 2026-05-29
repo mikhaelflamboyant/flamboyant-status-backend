@@ -27,5 +27,6 @@ router.delete('/:id', deleteProject)
 router.post('/:id/members', assignMember)
 router.patch('/:id/approve-freshservice', requireRole('ANALISTA_MASTER', 'COORDENADOR', 'GERENTE', 'SUPERINTENDENTE'), approveFreshservice)
 router.delete('/:id/reject-freshservice', requireRole('ANALISTA_MASTER', 'COORDENADOR', 'GERENTE', 'SUPERINTENDENTE'), rejectFreshservice)
+router.post('/:id/duplicate', duplicateProject)
 
 module.exports = router
