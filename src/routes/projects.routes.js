@@ -5,7 +5,7 @@ const {
   listProjects, listArchivedProjects, listGoLiveProjects, listBacklogProjects,
   getProjectById, createProject, updateProject, deleteProject, assignMember,
   approveFreshservice, rejectFreshservice, listFreshserviceRequests, assignResponsible,
-  cancelProject, listCancelledProjects, restoreProject
+  cancelProject, listCancelledProjects, restoreProject, duplicateProject
 } = require('../controllers/projects.controller')
 const authMiddleware = require('../middlewares/auth.middleware')
 
