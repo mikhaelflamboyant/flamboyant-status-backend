@@ -171,6 +171,10 @@ const getProjectById = async (req, res) => {
           orderBy: { changed_at: 'desc' },
           include: { changed_by_user: { select: { id: true, name: true } } }
         },
+        phase_history: {
+          orderBy: { changed_at: 'asc' },
+          include: { changed_by_user: { select: { id: true, name: true } } }
+        },
         costs: true,
       }
     })
@@ -408,6 +412,17 @@ const updateProject = async (req, res) => {
     }
 
     const updated = await prisma.project.update({ where: { id }, data: dataToUpdate })
+
+    if (current_phase && current_phase !== project.current_phase) {
+      await prisma.phaseHistory.create({
+        data: {
+          project_id: id,
+          changed_by: requester.id,
+          from_phase: project.current_phase,
+          to_phase: current_phase,
+        }
+      })
+    }
 
     if (go_live && new Date(go_live).toISOString() !== new Date(project.go_live).toISOString()) {
       await prisma.goLiveHistory.create({
@@ -674,6 +689,14 @@ const listFreshserviceRequests = async (req, res) => {
       where: { origin: 'FRESHSERVICE', archived: false },
       include: {
         requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
+        owner: { select: { id: true, name: true, email: true } },
+        members: { include: { user: { select: { id: true, name: true, email: true } } } },
+        costs: true,
+        status_updates: {
+          orderBy: { created_at: 'desc' },
+          take: 1,
+          select: { created_at: true }
+        },
       },
       orderBy: { created_at: 'desc' }
     })

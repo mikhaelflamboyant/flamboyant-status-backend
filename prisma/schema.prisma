@@ -24,6 +24,7 @@ model User {
   scope_items_created ScopeItem[]
   api_tokens ApiToken[]
   go_live_changes GoLiveHistory[]
+  phase_changes  PhaseHistory[]
 
   projects_led      Project[]            @relation("ProjectLeader")
   project_members   ProjectMember[]
@@ -65,6 +66,7 @@ model Project {
   tasks Task[]
   go_live_history GoLiveHistory[]
   scope_items    ScopeItem[]
+  phase_history  PhaseHistory[]
 
   owner_id String?
   owner    User?   @relation("ProjectLeader", fields: [owner_id], references: [id])
@@ -263,4 +265,16 @@ model Contact {
   name       String
   area       String
   created_at DateTime @default(now())
+}
+
+model PhaseHistory {
+  id           String   @id @default(uuid())
+  project_id   String
+  changed_by   String
+  from_phase   String
+  to_phase     String
+  changed_at   DateTime @default(now())
+
+  project          Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  changed_by_user  User    @relation(fields: [changed_by], references: [id])
 }
