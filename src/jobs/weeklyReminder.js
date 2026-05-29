@@ -110,7 +110,69 @@ const startWeeklyReminderJob = () => {
     }
   }, { timezone: 'America/Sao_Paulo' })
 
-  console.log('[CRON] Jobs iniciados — lembretes às sextas 9h, SUPORTE diário à 1h')
+  cron.schedule('0 9 * * *', async () => {
+    try {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const sevenDaysFromNow = new Date(today)
+      sevenDaysFromNow.setDate(today.getDate() + 7)
+
+      const projects = await prisma.project.findMany({
+        where: {
+          archived: false,
+          origin: 'NORMAL',
+          current_phase: { notIn: ['ENTREGUE', 'SUPORTE', 'BACKLOG', 'CANCELADO'] },
+          go_live: {
+            gte: today,
+            lte: sevenDaysFromNow,
+          }
+        },
+        include: {
+          requesters: {
+            where: { type: 'RESPONSAVEL' },
+            include: { user: { select: { id: true, name: true } } }
+          }
+        }
+      })
+
+      for (const project of projects) {
+        const daysUntil = Math.ceil((new Date(project.go_live) - today) / (1000 * 60 * 60 * 24))
+
+        for (const requester of project.requesters) {
+          if (!requester.user_id) continue
+
+          const alreadyNotified = await prisma.notification.findFirst({
+            where: {
+              user_id: requester.user_id,
+              type: 'PROXIMO_GO_LIVE',
+              link: `/projetos/${project.id}`,
+              created_at: { gte: today }
+            }
+          })
+
+          if (alreadyNotified) continue
+
+          await prisma.notification.create({
+            data: {
+              user_id: requester.user_id,
+              type: 'PROXIMO_GO_LIVE',
+              title: `Go-live em ${daysUntil} dia${daysUntil !== 1 ? 's' : ''}`,
+              body: `O projeto "${project.title}" tem go-live previsto para ${new Date(project.go_live).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}. Verifique se está tudo pronto.`,
+              link: `/projetos/${project.id}`,
+            }
+          })
+        }
+      }
+
+      if (projects.length > 0) {
+        console.log(`[CRON] Notificações de go-live próximo enviadas para ${projects.length} projeto(s)`)
+      }
+    } catch (err) {
+      console.error('[CRON] Erro ao notificar go-lives próximos:', err)
+    }
+  }, { timezone: 'America/Sao_Paulo' })
+
+  console.log('[CRON] Jobs iniciados - lembretes às sextas 9h, SUPORTE diário à 1h, go-live próximo diário às 9h')
 }
 
 module.exports = { startWeeklyReminderJob }
