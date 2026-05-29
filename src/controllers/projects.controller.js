@@ -52,6 +52,11 @@ const listProjects = async (req, res) => {
         owner: { select: { id: true, name: true, email: true } },
         members: { include: { user: { select: { id: true, name: true, email: true } } } },
         costs: true,
+        status_updates: {
+          orderBy: { created_at: 'desc' },
+          take: 1,
+          select: { created_at: true }
+        },
       },
       orderBy: { created_at: 'desc' }
     })
@@ -769,6 +774,15 @@ const assignResponsible = async (req, res) => {
     }
 
     await prisma.project.update({ where: { id }, data: dataToUpdate })
+
+    await prisma.phaseHistory.create({
+      data: {
+        project_id: id,
+        changed_by: user_id || requester.id,
+        from_phase: 'BACKLOG',
+        to_phase: 'RECEBIDA',
+      }
+    })
 
     if (member_ids?.length > 0) {
       for (const uid of member_ids) {
