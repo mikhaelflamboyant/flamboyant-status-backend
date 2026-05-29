@@ -77,6 +77,9 @@ const createScopeItem = async (req, res) => {
     if (!title) {
       return res.status(400).json({ error: 'Título é obrigatório' })
     }
+    if (!stage) {
+      return res.status(400).json({ error: 'Etapa é obrigatória' })
+    }
 
     const project = await prisma.project.findUnique({ where: { id: project_id } })
     if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })

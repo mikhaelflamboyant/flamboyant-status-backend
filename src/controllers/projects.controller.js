@@ -43,6 +43,13 @@ const listProjects = async (req, res) => {
       })
       const recentIds = recentStatus.map(s => s.project_id)
       whereClause = { ...whereClause, id: { notIn: recentIds } }
+    } else if (filtro === 'sem_cronograma') {
+      const comCronograma = await prisma.scopeItem.findMany({
+        select: { project_id: true },
+        distinct: ['project_id'],
+      })
+      const comIds = comCronograma.map(s => s.project_id)
+      whereClause = { ...whereClause, id: { notIn: comIds } }
     }
 
     const projects = await prisma.project.findMany({
@@ -73,12 +80,20 @@ const listProjects = async (req, res) => {
 
 const listGoLiveProjects = async (req, res) => {
   try {
+    const { filtro } = req.query
+    let whereClause = { current_phase: 'SUPORTE', archived: false, origin: 'NORMAL' }
+
+    if (filtro === 'sem_cronograma') {
+      const comCronograma = await prisma.scopeItem.findMany({
+        select: { project_id: true },
+        distinct: ['project_id'],
+      })
+      const comIds = comCronograma.map(s => s.project_id)
+      whereClause = { ...whereClause, id: { notIn: comIds } }
+    }
+
     const projects = await prisma.project.findMany({
-      where: {
-        current_phase: 'SUPORTE',
-        archived: false,
-        origin: 'NORMAL',
-      },
+      where: whereClause,
       include: {
         requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
         owner: { select: { id: true, name: true, email: true } },
@@ -129,6 +144,13 @@ const listArchivedProjects = async (req, res) => {
         ...whereClause,
         archived_at: { gte: startOfMonth }
       }
+    } else if (filtro === 'sem_cronograma') {
+      const comCronograma = await prisma.scopeItem.findMany({
+        select: { project_id: true },
+        distinct: ['project_id'],
+      })
+      const comIds = comCronograma.map(s => s.project_id)
+      whereClause = { ...whereClause, id: { notIn: comIds } }
     }
 
     const projects = await prisma.project.findMany({
@@ -944,8 +966,20 @@ const cancelProject = async (req, res) => {
 
 const listCancelledProjects = async (req, res) => {
   try {
+    const { filtro } = req.query
+    let whereClause = { current_phase: 'CANCELADO', archived: true }
+
+    if (filtro === 'sem_cronograma') {
+      const comCronograma = await prisma.scopeItem.findMany({
+        select: { project_id: true },
+        distinct: ['project_id'],
+      })
+      const comIds = comCronograma.map(s => s.project_id)
+      whereClause = { ...whereClause, id: { notIn: comIds } }
+    }
+
     const projects = await prisma.project.findMany({
-      where: { current_phase: 'CANCELADO', archived: true },
+      where: whereClause,
       include: {
         requesters: { include: { user: { select: { id: true, name: true, area: true } } } },
         owner: { select: { id: true, name: true, email: true } },
