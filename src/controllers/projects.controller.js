@@ -408,10 +408,14 @@ const updateProject = async (req, res) => {
       const newGoLive = new Date(go_live)
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      if (newGoLive > today) {
-        dataToUpdate.traffic_light = 'VERDE'
-      } else {
-        dataToUpdate.traffic_light = 'VERMELHO'
+      const existingGoLive = project.go_live ? new Date(project.go_live).toISOString().split('T')[0] : null
+      const newGoLiveStr = new Date(go_live).toISOString().split('T')[0]
+      if (existingGoLive !== newGoLiveStr) {
+        if (newGoLive > today) {
+          dataToUpdate.traffic_light = 'VERDE'
+        } else {
+          dataToUpdate.traffic_light = 'VERMELHO'
+        }
       }
     }
 
