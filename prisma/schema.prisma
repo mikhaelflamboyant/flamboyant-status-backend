@@ -25,6 +25,8 @@ model User {
   api_tokens ApiToken[]
   go_live_changes GoLiveHistory[]
   phase_changes  PhaseHistory[]
+  task_assignees       TaskAssignee[]
+  scope_item_assignees ScopeItemAssignee[]
 
   projects_led      Project[]            @relation("ProjectLeader")
   project_members   ProjectMember[]
@@ -189,7 +191,8 @@ model Task {
   created_at  DateTime  @default(now())
   date_history   TaskDateHistory[]
   scope_item_id  String?
-scope_item     ScopeItem? @relation(fields: [scope_item_id], references: [id])
+  scope_item     ScopeItem? @relation(fields: [scope_item_id], references: [id])
+  assignees    TaskAssignee[]
 
   project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   author   User    @relation("TaskAuthor", fields: [author_id], references: [id])
@@ -254,6 +257,7 @@ model ScopeItem {
   created_by            String
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
+  assignees    ScopeItemAssignee[]
 
   project      Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   tasks        Task[]
@@ -277,4 +281,26 @@ model PhaseHistory {
 
   project          Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
   changed_by_user  User    @relation(fields: [changed_by], references: [id])
+}
+
+model TaskAssignee {
+  id      String @id @default(uuid())
+  task_id String
+  user_id String
+
+  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([task_id, user_id])
+}
+
+model ScopeItemAssignee {
+  id            String @id @default(uuid())
+  scope_item_id String
+  user_id       String
+
+  scope_item ScopeItem @relation(fields: [scope_item_id], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([scope_item_id, user_id])
 }

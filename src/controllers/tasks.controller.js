@@ -37,6 +37,7 @@ const listTasks = async (req, res) => {
       include: {
         author: { select: { id: true, name: true } },
         assignee: { select: { id: true, name: true } },
+        assignees: { include: { user: { select: { id: true, name: true } } } },
         date_history: {
           orderBy: { changed_at: 'desc' },
           include: { changed_by_user: { select: { id: true, name: true } } }
@@ -55,7 +56,7 @@ const listTasks = async (req, res) => {
 const createTask = async (req, res) => {
   try {
     const { project_id } = req.params
-    const { title, description, assignee_id, phase, due_date, start_date, end_date } = req.body
+    const { title, description, assignee_id, assignee_ids, phase, due_date, start_date, end_date } = req.body
     const requester = req.user
 
     if (!title) {
@@ -86,7 +87,27 @@ const createTask = async (req, res) => {
     })
     await touchProject(project_id)
 
-    return res.status(201).json(task)
+    const allAssigneeIds = assignee_ids?.length > 0
+      ? assignee_ids
+      : assignee_id ? [assignee_id] : []
+
+    for (const uid of allAssigneeIds) {
+      await prisma.taskAssignee.create({
+        data: { task_id: task.id, user_id: uid }
+      })
+    }
+
+    const taskWithAssignees = await prisma.task.findUnique({
+      where: { id: task.id },
+      include: {
+        author: { select: { id: true, name: true } },
+        assignee: { select: { id: true, name: true } },
+        assignees: { include: { user: { select: { id: true, name: true } } } },
+      }
+    })
+
+    await touchProject(project_id)
+    return res.status(201).json(taskWithAssignees)
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar tarefa' })
@@ -96,7 +117,7 @@ const createTask = async (req, res) => {
 const updateTask = async (req, res) => {
   try {
     const { id } = req.params
-    const { title, description, assignee_id, phase, due_date, start_date, end_date } = req.body
+    const { title, description, assignee_id, assignee_ids, phase, due_date, start_date, end_date } = req.body
     const requester = req.user
 
     const task = await prisma.task.findUnique({
@@ -133,6 +154,13 @@ const updateTask = async (req, res) => {
       }
     })
     await touchProject(task.project_id)
+
+    if (assignee_ids !== undefined) {
+      await prisma.taskAssignee.deleteMany({ where: { task_id: id } })
+      for (const uid of assignee_ids) {
+        await prisma.taskAssignee.create({ data: { task_id: id, user_id: uid } })
+      }
+    }
 
     if (end_date !== undefined && String(end_date) !== String(originalTask.end_date)) {
       await prisma.taskDateHistory.create({

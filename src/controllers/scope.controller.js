@@ -21,7 +21,8 @@ const listScopeItems = async (req, res) => {
       where: { project_id },
       include: {
         tasks: { select: { id: true, completed: true } },
-        created_by_user: { select: { id: true, name: true } }
+        created_by_user: { select: { id: true, name: true } },
+        assignees: { include: { user: { select: { id: true, name: true } } } },
       },
       orderBy: [
         { start_date: 'asc' },
@@ -68,7 +69,7 @@ const listScopeItems = async (req, res) => {
 const createScopeItem = async (req, res) => {
   try {
     const { project_id } = req.params
-    const { title, description, phase, stage, start_date, end_date, completion_pct, completion_date } = req.body
+    const { title, description, phase, stage, start_date, end_date, completion_pct, completion_date, assignee_ids } = req.body
     const requester = req.user
 
     if (!isFromTI(requester)) {
@@ -103,6 +104,13 @@ const createScopeItem = async (req, res) => {
         created_by_user: { select: { id: true, name: true } }
       }
     })
+    if (assignee_ids?.length > 0) {
+      for (const uid of assignee_ids) {
+        await prisma.scopeItemAssignee.create({
+          data: { scope_item_id: item.id, user_id: uid }
+        })
+      }
+    }
     await touchProject(project_id)
 
     return res.status(201).json(item)
@@ -115,7 +123,7 @@ const createScopeItem = async (req, res) => {
 const updateScopeItem = async (req, res) => {
   try {
     const { id } = req.params
-    const { title, description, phase, stage, start_date, end_date, completion_pct, completion_date } = req.body
+    const { title, description, phase, stage, start_date, end_date, completion_pct, completion_date, assignee_ids } = req.body
     const requester = req.user
 
     if (!isFromTI(requester)) {
@@ -126,6 +134,12 @@ const updateScopeItem = async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Item não encontrado' })
 
     if (item.status === 'RASCUNHO' || item.status === 'AGUARDANDO_APROVACAO') {
+      if (assignee_ids !== undefined) {
+        await prisma.scopeItemAssignee.deleteMany({ where: { scope_item_id: id } })
+        for (const uid of assignee_ids) {
+          await prisma.scopeItemAssignee.create({ data: { scope_item_id: id, user_id: uid } })
+        }
+      }
       const updated = await prisma.scopeItem.update({
         where: { id },
         data: {
