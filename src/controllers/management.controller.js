@@ -330,4 +330,111 @@ return res.status(200).json({ by_area: byArea, without_projects: usersWithoutPro
   }
 }
 
-module.exports = { getDashboard, getUsers }
+const getPendingApprovals = async (req, res) => {
+  try {
+    const requester = req.user
+    if (!canAccessManagement(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para acessar o painel de gestão' })
+    }
+
+    const { project_id, user_id, order = 'desc', page = 1, page_size = 10 } = req.query
+    const pageNum = Math.max(1, parseInt(page))
+    const pageSizeNum = Math.max(1, Math.min(100, parseInt(page_size)))
+
+    const whereClause = {
+      pending_action: { not: null },
+      project: { archived: false },
+    }
+    if (project_id) whereClause.project_id = project_id
+    if (user_id) whereClause.created_by = user_id
+
+    const allPendingItems = await prisma.scopeItem.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        project_id: true,
+        title: true,
+        stage: true,
+        start_date: true,
+        end_date: true,
+        pending_title: true,
+        pending_start_date: true,
+        pending_end_date: true,
+        pending_action: true,
+        updated_at: true,
+        project: {
+          select: { id: true, title: true, area: true }
+        },
+        created_by_user: {
+          select: { id: true, name: true }
+        },
+      },
+      orderBy: { updated_at: order === 'asc' ? 'asc' : 'desc' },
+    })
+
+    const projectMap = {}
+    for (const item of allPendingItems) {
+      const pid = item.project_id
+      if (!projectMap[pid]) {
+        projectMap[pid] = {
+          project_id: pid,
+          project_title: item.project.title,
+          project_area: item.project.area,
+          submitted_by: item.created_by_user,
+          latest_updated_at: item.updated_at,
+          items: [],
+        }
+      }
+      if (new Date(item.updated_at) > new Date(projectMap[pid].latest_updated_at)) {
+        projectMap[pid].latest_updated_at = item.updated_at
+        projectMap[pid].submitted_by = item.created_by_user
+      }
+      projectMap[pid].items.push({
+        id: item.id,
+        stage: item.stage,
+        title: item.title,
+        pending_title: item.pending_title,
+        pending_action: item.pending_action,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        pending_start_date: item.pending_start_date,
+        pending_end_date: item.pending_end_date,
+        updated_at: item.updated_at,
+        submitted_by: item.created_by_user,
+      })
+    }
+
+    const projectsArray = Object.values(projectMap).sort((a, b) => {
+      if (order === 'asc') return new Date(a.latest_updated_at) - new Date(b.latest_updated_at)
+      return new Date(b.latest_updated_at) - new Date(a.latest_updated_at)
+    })
+
+    const total = projectsArray.length
+    const totalPages = Math.ceil(total / pageSizeNum)
+    const paginated = projectsArray.slice((pageNum - 1) * pageSizeNum, pageNum * pageSizeNum)
+
+    const filterProjects = [...new Map(
+      allPendingItems.map(i => [i.project_id, { id: i.project_id, title: i.project.title }])
+    ).values()]
+    const filterUsers = [...new Map(
+      allPendingItems.map(i => [i.created_by_user.id, { id: i.created_by_user.id, name: i.created_by_user.name }])
+    ).values()]
+
+    return res.status(200).json({
+      projects: paginated,
+      total,
+      page: pageNum,
+      page_size: pageSizeNum,
+      total_pages: totalPages,
+      filter_options: {
+        projects: filterProjects,
+        users: filterUsers,
+      },
+    })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao carregar aprovações pendentes' })
+  }
+}
+
+module.exports = { getDashboard, getUsers, getPendingApprovals }
