@@ -8,7 +8,7 @@ const freshserviceWebhook = async (req, res) => {
     logger.info({ payload: JSON.stringify(payload) }, 'Webhook FreshService recebido')
 
     const title = payload.project_title || payload.subject || 'Projeto via FreshService'
-    const description = payload.description_text || payload.description || 'Projeto criado via FreshService'
+    const description = payload.objetivo || payload.description_text || payload.description || 'Projeto criado via FreshService'
     const requesterEmail = payload.requester?.email || payload.email || null
     const ticketId = payload.id || payload.ticket_id || null
 
