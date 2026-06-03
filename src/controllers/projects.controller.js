@@ -1,6 +1,22 @@
 const prisma = require('../lib/prisma')
 const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
 const logger = require('../lib/logger')
+const closeFreshserviceTicket = async (ticketId) => {
+  if (!ticketId || !process.env.FRESHSERVICE_DOMAIN || !process.env.FRESHSERVICE_API_KEY) return
+  try {
+    const credentials = Buffer.from(`${process.env.FRESHSERVICE_API_KEY}:X`).toString('base64')
+    await fetch(`https://${process.env.FRESHSERVICE_DOMAIN}/api/v2/tickets/${ticketId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}`,
+      },
+      body: JSON.stringify({ status: 5 }),
+    })
+  } catch (err) {
+    logger.error({ err }, 'Erro ao fechar ticket no FreshService')
+  }
+}
 
 const listProjects = async (req, res) => {
   try {
@@ -696,6 +712,10 @@ const approveFreshservice = async (req, res) => {
       }
     }
 
+    if (project.freshservice_ticket_id) {
+      await closeFreshserviceTicket(project.freshservice_ticket_id)
+    }
+
     return res.status(200).json(project)
   } catch (err) {
     logger.error(err)
@@ -706,7 +726,11 @@ const approveFreshservice = async (req, res) => {
 const rejectFreshservice = async (req, res) => {
   try {
     const { id } = req.params
+    const project = await prisma.project.findUnique({ where: { id }, select: { freshservice_ticket_id: true } })
     await prisma.project.delete({ where: { id } })
+    if (project?.freshservice_ticket_id) {
+      await closeFreshserviceTicket(project.freshservice_ticket_id)
+    }
     return res.status(200).json({ message: 'Solicitação rejeitada e removida' })
   } catch (err) {
     logger.error(err)
