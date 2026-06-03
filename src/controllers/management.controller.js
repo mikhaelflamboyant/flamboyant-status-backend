@@ -135,7 +135,7 @@ const getDashboard = async (req, res) => {
 
     const cancelledThisMonth = await prisma.project.count({
       where: {
-        archived_at: { gte: startOfMonth },
+        cancelled_at: { gte: startOfMonth },
         current_phase: 'CANCELADO'
       }
     })
@@ -342,7 +342,10 @@ const getPendingApprovals = async (req, res) => {
     const pageSizeNum = Math.max(1, Math.min(100, parseInt(page_size)))
 
     const whereClause = {
-      pending_action: { not: null },
+      OR: [
+        { pending_action: { not: null } },
+        { status: 'AGUARDANDO_APROVACAO' },
+      ],
       project: { archived: false },
     }
     if (project_id) whereClause.project_id = project_id

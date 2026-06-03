@@ -980,6 +980,11 @@ const listCancelledProjects = async (req, res) => {
       })
       const comIds = comCronograma.map(s => s.project_id)
       whereClause = { ...whereClause, id: { notIn: comIds } }
+    } else if (filtro === 'cancelados_mes') {
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+      whereClause = { ...whereClause, cancelled_at: { gte: startOfMonth } }
     }
 
     const projects = await prisma.project.findMany({
