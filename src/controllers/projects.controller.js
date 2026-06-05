@@ -477,7 +477,7 @@ const updateProject = async (req, res) => {
       })
     }
 
-    if (go_live && new Date(go_live).toISOString() !== new Date(project.go_live).toISOString()) {
+    if (go_live && project.go_live && new Date(go_live).toISOString() !== new Date(project.go_live).toISOString()) {
       await prisma.goLiveHistory.create({
         data: {
           project_id: id,
