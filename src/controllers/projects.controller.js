@@ -383,14 +383,17 @@ const updateProject = async (req, res) => {
       member_ids, member_names, costs
     } = req.body
 
-    if (current_phase && current_phase !== project.current_phase && !project.legacy) {
+    const PRIVILEGED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
+    const isPrivileged = PRIVILEGED_ROLES.includes(requester.role) && isResponsible
+
+    if (current_phase && current_phase !== project.current_phase && !project.legacy && !isPrivileged) {
       const scopeItems = await prisma.scopeItem.findMany({
         where: { project_id: id, status: 'APROVADO' }
       })
 
       const stageComplete = (stageKey) => {
-        const hasPendingActions = scopeItems.some(s => s.pending_action)
-        if (hasPendingActions) return false
+        const stagePending = scopeItems.some(s => s.stage === stageKey && s.pending_action)
+        if (stagePending) return false
 
         const items = scopeItems.filter(s => s.stage === stageKey)
         if (items.length === 0) return true
@@ -399,8 +402,10 @@ const updateProject = async (req, res) => {
 
       const TRANSITIONS = {
         DESENVOLVIMENTO: () => stageComplete('PLANEJAMENTO'),
+        TESTES: () => stageComplete('PLANEJAMENTO'),
+        VALIDACAO_SOLICITANTE: () => stageComplete('PLANEJAMENTO'),
+        SUPORTE: () => stageComplete('EXECUCAO'),
         ENTREGUE: () => stageComplete('EXECUCAO'),
-        SUPORTE: () => stageComplete('GO_LIVE'),
       }
 
       if (TRANSITIONS[current_phase] && !TRANSITIONS[current_phase]()) {
@@ -408,7 +413,7 @@ const updateProject = async (req, res) => {
           error: `Não é possível avançar para "${current_phase}". Conclua todas as atividades aprovadas do cronograma correspondente.`
         })
       }
-    }
+    }  
 
     const dataToUpdate = {
       ...(title && { title }),
