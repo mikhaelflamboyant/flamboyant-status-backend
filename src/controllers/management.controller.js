@@ -29,7 +29,7 @@ const getDashboard = async (req, res) => {
           go_live: true, title: true, created_at: true
         }
       }),
-      prisma.project.count({ where: { archived: true } }),
+      prisma.project.count({ where: { archived: true, current_phase: { not: 'CANCELADO' } } }),
       prisma.project.findMany({
         where: { current_phase: 'BACKLOG', archived: false, origin: 'NORMAL' },
         select: {
