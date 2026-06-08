@@ -12,13 +12,10 @@ const freshserviceWebhook = async (req, res) => {
     const requesterEmail = payload.requester?.email || payload.email || null
     const ticketId = payload.id || payload.ticket_id || null
 
-    const goLive = new Date()
-    goLive.setMonth(goLive.getMonth() + 1)
-
     const project = await prisma.project.create({
       data: {
         title,
-        area: '',
+        area: payload.area || 'Não definida',
         requester_name: payload.requester?.name || '',
         execution_type: 'INTERNA',
         description,
