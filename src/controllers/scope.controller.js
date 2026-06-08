@@ -93,7 +93,10 @@ const createScopeItem = async (req, res) => {
       return res.status(400).json({ error: 'Etapa é obrigatória' })
     }
 
-    const project = await prisma.project.findUnique({ where: { id: project_id } })
+    const project = await prisma.project.findUnique({
+      where: { id: project_id },
+      include: { requesters: true }
+    })
     if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })
 
     const item = await prisma.scopeItem.create({
@@ -124,7 +127,18 @@ const createScopeItem = async (req, res) => {
     }
     await touchProject(project_id)
 
-    return res.status(201).json(item)
+    let mentionResult = { invalidUserIds: [] }
+    if (canMention(requester, project)) {
+      mentionResult = await syncMentions({
+        source_type: 'SCOPE_ITEM',
+        source_id: item.id,
+        project_id,
+        text: [title, description].filter(Boolean).join('\n'),
+        requester,
+      })
+    }
+
+    return res.status(201).json({ ...item, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar item de escopo' })
@@ -169,7 +183,23 @@ const updateScopeItem = async (req, res) => {
         }
       })
       await touchProject(item.project_id)
-      return res.status(200).json(updated)
+
+      let mentionResult = { invalidUserIds: [] }
+      const projectForMention = await prisma.project.findUnique({
+        where: { id: item.project_id }, include: { requesters: true }
+      })
+      if (canMention(requester, projectForMention)) {
+        mentionResult = await syncMentions({
+          source_type: 'SCOPE_ITEM',
+          source_id: id,
+          project_id: item.project_id,
+          text: [title ?? item.title, (description !== undefined ? description : item.description)]
+            .filter(Boolean).join('\n'),
+          requester,
+        })
+      }
+
+      return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
     }
 
     const updated = await prisma.scopeItem.update({
@@ -208,7 +238,22 @@ const updateScopeItem = async (req, res) => {
       }
     }
 
-    return res.status(200).json(updated)
+    let mentionResult = { invalidUserIds: [] }
+    const projectForMention = await prisma.project.findUnique({
+      where: { id: item.project_id }, include: { requesters: true }
+    })
+    if (canMention(requester, projectForMention)) {
+      mentionResult = await syncMentions({
+        source_type: 'SCOPE_ITEM',
+        source_id: id,
+        project_id: item.project_id,
+        text: [title ?? item.title, (description !== undefined ? description : item.description)]
+          .filter(Boolean).join('\n'),
+        requester,
+      })
+    }
+
+    return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar item de escopo' })

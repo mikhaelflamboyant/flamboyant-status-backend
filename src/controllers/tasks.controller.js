@@ -119,7 +119,22 @@ const createTask = async (req, res) => {
     })
 
     await touchProject(project_id)
-    return res.status(201).json(taskWithAssignees)
+
+    let mentionResult = { invalidUserIds: [] }
+    const projectForMention = await prisma.project.findUnique({
+      where: { id: project_id }, include: { requesters: true }
+    })
+    if (canMention(requester, projectForMention)) {
+      mentionResult = await syncMentions({
+        source_type: 'TASK',
+        source_id: task.id,
+        project_id,
+        text: [title, description].filter(Boolean).join('\n'),
+        requester,
+      })
+    }
+
+    return res.status(201).json({ ...taskWithAssignees, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar tarefa' })
@@ -189,7 +204,18 @@ const updateTask = async (req, res) => {
       })
     }
 
-    return res.status(200).json(updated)
+    let mentionResult = { invalidUserIds: [] }
+    if (canMention(requester, task.project)) {
+      mentionResult = await syncMentions({
+        source_type: 'TASK',
+        source_id: id,
+        project_id: task.project_id,
+        text: [title ?? task.title, description ?? task.description].filter(Boolean).join('\n'),
+        requester,
+      })
+    }
+
+    return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar tarefa' })

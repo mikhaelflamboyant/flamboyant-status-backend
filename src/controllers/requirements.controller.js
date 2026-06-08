@@ -2,6 +2,17 @@ const prisma = require('../lib/prisma')
 const logger = require('../lib/logger')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
+const { syncMentions } = require('../services/mentions.service')
+
+const TI_AREA = 'Tecnologia da Informação'
+const canMention = (requester, project) => {
+  const isFromTI = requester.area === TI_AREA ||
+    ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+  const isResponsible = project.requesters?.some(
+    r => r.user_id === requester.id && r.type === 'RESPONSAVEL'
+  )
+  return isFromTI && isResponsible
+}
 
 const getRequirement = async (req, res) => {
   try {
@@ -46,7 +57,7 @@ const createRequirement = async (req, res) => {
 
     const project = await prisma.project.findUnique({
       where: { id: project_id },
-      include: { members: true }
+      include: { members: true, requesters: true }
     })
 
     if (!project) {
@@ -75,7 +86,18 @@ const createRequirement = async (req, res) => {
     })
     await touchProject(project_id)
 
-    return res.status(201).json(requirement)
+    let mentionResult = { invalidUserIds: [] }
+    if (canMention(requester, project)) {
+      mentionResult = await syncMentions({
+        source_type: 'REQUIREMENT',
+        source_id: requirement.id,
+        project_id,
+        text: content,
+        requester,
+      })
+    }
+
+    return res.status(201).json({ ...requirement, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao criar requisitos' })
@@ -94,7 +116,7 @@ const updateRequirement = async (req, res) => {
 
     const project = await prisma.project.findUnique({
       where: { id: project_id },
-      include: { members: true }
+      include: { members: true, requesters: true }
     })
 
     if (!project) {
@@ -138,7 +160,18 @@ const updateRequirement = async (req, res) => {
     })
     await touchProject(project_id)
 
-    return res.status(200).json(updated)
+    let mentionResult = { invalidUserIds: [] }
+    if (canMention(requester, project)) {
+      mentionResult = await syncMentions({
+        source_type: 'REQUIREMENT',
+        source_id: requirement.id,
+        project_id,
+        text: content,
+        requester,
+      })
+    }
+
+    return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao atualizar requisitos' })
