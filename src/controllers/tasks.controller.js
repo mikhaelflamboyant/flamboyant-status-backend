@@ -56,7 +56,7 @@ const listTasks = async (req, res) => {
 const createTask = async (req, res) => {
   try {
     const { project_id } = req.params
-    const { title, description, assignee_id, assignee_ids, phase, due_date, start_date, end_date } = req.body
+    const { title, description, assignee_id, assignee_ids, phase, due_date, start_date, end_date, scope_item_id } = req.body
     const requester = req.user
 
     if (!title) {
@@ -79,6 +79,7 @@ const createTask = async (req, res) => {
         due_date: due_date ? new Date(due_date) : null,
         start_date: start_date ? new Date(start_date) : null,
         end_date: end_date ? new Date(end_date) : null,
+        scope_item_id: scope_item_id || null,
       },
       include: {
         author: { select: { id: true, name: true } },
