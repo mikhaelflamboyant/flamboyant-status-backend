@@ -27,6 +27,8 @@ model User {
   phase_changes  PhaseHistory[]
   task_assignees       TaskAssignee[]
   scope_item_assignees ScopeItemAssignee[]
+  mentions_made     Mention[] @relation("MentionAuthor")
+  mentions_received Mention[] @relation("MentionedUser")
 
   projects_led      Project[]            @relation("ProjectLeader")
   project_members   ProjectMember[]
@@ -69,6 +71,8 @@ model Project {
   go_live_history GoLiveHistory[]
   scope_items    ScopeItem[]
   phase_history  PhaseHistory[]
+  mentions_in       Mention[] @relation("MentionProject")
+  mentions_received Mention[] @relation("MentionedProject")
 
   owner_id String?
   owner    User?   @relation("ProjectLeader", fields: [owner_id], references: [id])
@@ -303,4 +307,22 @@ model ScopeItemAssignee {
   user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([scope_item_id, user_id])
+}
+
+model Mention {
+  id                   String   @id @default(uuid())
+  source_type          String   // 'TASK' | 'SCOPE_ITEM' | 'REQUIREMENT'
+  source_id            String
+  project_id           String
+  mentioned_user_id    String?
+  mentioned_project_id String?
+  created_by           String
+  created_at           DateTime @default(now())
+
+  project           Project @relation("MentionProject", fields: [project_id], references: [id], onDelete: Cascade)
+  mentioned_user    User?    @relation("MentionedUser", fields: [mentioned_user_id], references: [id], onDelete: Cascade)
+  mentioned_project Project? @relation("MentionedProject", fields: [mentioned_project_id], references: [id], onDelete: Cascade)
+  author            User     @relation("MentionAuthor", fields: [created_by], references: [id])
+
+  @@index([source_type, source_id])
 }

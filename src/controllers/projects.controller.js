@@ -1070,10 +1070,54 @@ const restoreProject = async (req, res) => {
   }
 }
 
+const getMentionableUsers = async (req, res) => {
+  try {
+    const { id } = req.params
+    const TI_AREA = 'Tecnologia da Informação'
+
+    const project = await prisma.project.findUnique({
+      where: { id },
+      include: {
+        requesters: { include: { user: true } },
+        members: { include: { user: true } },
+      },
+    })
+    if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })
+
+    const map = new Map()
+    const consider = (user) => {
+      if (user && user.status === 'ATIVO' && user.area === TI_AREA) {
+        map.set(user.id, { id: user.id, name: user.name, area: user.area })
+      }
+    }
+    project.requesters.forEach(r => consider(r.user))
+    project.members.forEach(m => consider(m.user))
+
+    return res.status(200).json([...map.values()].sort((a, b) => a.name.localeCompare(b.name)))
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao listar usuários mencionáveis' })
+  }
+}
+
+const getMentionableProjects = async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      select: { id: true, title: true, current_phase: true, archived: true },
+      orderBy: { created_at: 'desc' },
+    })
+    return res.status(200).json(projects)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao listar projetos mencionáveis' })
+  }
+}
+
 module.exports = {
   listProjects, listArchivedProjects, listGoLiveProjects, listBacklogProjects,
   getProjectById, createProject, updateProject,
   deleteProject, assignMember, archiveExpiredProjects,
   approveFreshservice, rejectFreshservice, listFreshserviceRequests,
-  assignResponsible, cancelProject, listCancelledProjects, restoreProject, duplicateProject
+  assignResponsible, cancelProject, listCancelledProjects, restoreProject,
+  duplicateProject, getMentionableUsers, getMentionableProjects,
 }

@@ -5,6 +5,17 @@ const touchProject = (project_id) =>
 
 const TI_AREA = 'Tecnologia da Informação'
 
+const { syncMentions } = require('../services/mentions.service')
+
+const canMention = (requester, project) => {
+  const isFromTI = requester.area === TI_AREA ||
+    ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+  const isResponsible = project.requesters?.some(
+    r => r.user_id === requester.id && r.type === 'RESPONSAVEL'
+  )
+  return isFromTI && isResponsible
+}
+
 const canManageTasks = async (requester, projectId) => {
   const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
   if (!isFromTI) return false
