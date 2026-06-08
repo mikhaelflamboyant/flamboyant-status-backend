@@ -193,8 +193,16 @@ const completeTask = async (req, res) => {
     const task = await prisma.task.findUnique({ where: { id } })
     if (!task) return res.status(404).json({ error: 'Tarefa não encontrada' })
 
-    if (task.author_id !== requester.id) {
-      return res.status(403).json({ error: 'Apenas quem criou a tarefa pode concluí-la' })
+    const taskWithAssignees = await prisma.task.findUnique({
+      where: { id },
+      include: { assignees: true }
+    })
+    const isAuthor = task.author_id === requester.id
+    const isAssignee = task.assignee_id === requester.id ||
+      taskWithAssignees.assignees?.some(a => a.user_id === requester.id)
+
+    if (!isAuthor && !isAssignee) {
+      return res.status(403).json({ error: 'Apenas o autor ou um responsável pela tarefa pode concluí-la' })
     }
 
     const updated = await prisma.task.update({
