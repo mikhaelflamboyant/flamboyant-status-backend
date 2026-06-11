@@ -2,6 +2,8 @@ const prisma = require('../lib/prisma')
 const logger = require('../lib/logger')
 
 const TI_AREA = 'Tecnologia da Informação'
+const EXECUTION_PHASES = ['DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE']
+const GO_LIVE_PHASES = ['RECEBIDA', 'ENTREVISTA_SOLICITANTE', 'LEVANTAMENTO_REQUISITOS', 'ANALISE_SOLUCAO', 'DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE']
 
 const isTI = (user) =>
   user.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(user.role)
@@ -73,6 +75,7 @@ const getPersonalDashboard = async (req, res) => {
       where: {
         id: { in: projectIds },
         go_live: { lte: tenDaysFromNow },
+        current_phase: { in: GO_LIVE_PHASES },
       },
       select: { id: true, title: true, go_live: true, current_phase: true },
       orderBy: { go_live: 'asc' },
@@ -96,6 +99,9 @@ const getPersonalDashboard = async (req, res) => {
         project_title: p.title,
         last_status_at: p.status_updates[0]?.created_at || null,
         tag: getStatusReportTag(p.status_updates[0]?.created_at || null),
+        launched_this_week: p.status_updates[0]?.created_at
+          ? new Date(p.status_updates[0].created_at) >= weekStart
+          : false,
       }))
       .sort((a, b) => {
         const order = { vermelho: 0, amarelo: 1, verde: 2 }
@@ -150,7 +156,7 @@ const getPersonalDashboard = async (req, res) => {
     })
 
     const goLiveCount = await prisma.project.count({
-      where: { id: { in: projectIds }, go_live: { lte: tenDaysFromNow } },
+      where: { id: { in: projectIds }, go_live: { lte: tenDaysFromNow }, current_phase: { in: GO_LIVE_PHASES } },
     })
     const statusPendingCount = projects.filter(p =>
       !p.status_updates[0]?.created_at ||
@@ -209,7 +215,7 @@ const getGoLive = async (req, res) => {
     const tenDaysFromNow = new Date(now)
     tenDaysFromNow.setDate(now.getDate() + 10)
 
-    const where = { id: { in: projectIds }, go_live: { lte: tenDaysFromNow } }
+    const where = { id: { in: projectIds }, go_live: { lte: tenDaysFromNow }, current_phase: { in: GO_LIVE_PHASES } }
 
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
@@ -248,7 +254,7 @@ const getStatusReports = async (req, res) => {
     const { start: weekStart } = getCurrentWeekRange()
 
     const projects = await prisma.project.findMany({
-      where: { id: { in: projectIds } },
+      where: { id: { in: projectIds }, current_phase: { in: EXECUTION_PHASES } },
       select: {
         id: true, title: true,
         status_updates: {
