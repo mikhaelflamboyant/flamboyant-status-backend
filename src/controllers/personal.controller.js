@@ -24,14 +24,17 @@ function getCurrentWeekRange() {
 function getStatusReportTag(lastStatusDate) {
   const now = new Date()
   const day = now.getDay()
-  const hour = now.getHours()
   const { start: weekStart } = getCurrentWeekRange()
 
-  const launchedThisWeek = lastStatusDate && new Date(lastStatusDate) >= weekStart
+  const lastWeekStart = new Date(weekStart)
+  lastWeekStart.setDate(weekStart.getDate() - 7)
 
-  if (launchedThisWeek) return 'verde'
-  if (day === 5 && hour >= 9) return 'vermelho'
-  if (day === 5 || day === 4) return 'amarelo'
+  const last = lastStatusDate ? new Date(lastStatusDate) : null
+
+  if (last && last >= weekStart) return 'verde'
+  if (!last || last < lastWeekStart) return 'vermelho'
+  if (day === 5 || day === 6) return 'vermelho'
+  if (day === 4) return 'amarelo'
 
   return 'verde'
 }
