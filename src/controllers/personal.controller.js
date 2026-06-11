@@ -106,8 +106,9 @@ const getPersonalDashboard = async (req, res) => {
     const scopeItems = await prisma.scopeItem.findMany({
       where: {
         project_id: { in: projectIds },
-        end_date: { gte: weekStart, lte: weekEnd },
+        end_date: { lte: weekEnd },
         status: 'APROVADO',
+        completion_date: null,
       },
       select: {
         id: true, title: true, end_date: true, completion_date: true,
@@ -121,7 +122,7 @@ const getPersonalDashboard = async (req, res) => {
     const tasks = await prisma.task.findMany({
       where: {
         project_id: { in: projectIds },
-        end_date: { gte: weekStart, lte: weekEnd },
+        end_date: { lte: weekEnd },
         completed: false,
         OR: [
           { assignee_id: requester.id },
@@ -152,12 +153,13 @@ const getPersonalDashboard = async (req, res) => {
       where: { id: { in: projectIds }, go_live: { lte: tenDaysFromNow } },
     })
     const statusPendingCount = projects.filter(p =>
-      getStatusReportTag(p.status_updates[0]?.created_at || null) !== 'verde'
+      !p.status_updates[0]?.created_at ||
+      new Date(p.status_updates[0].created_at) < weekStart
     ).length
     const scopeCount = await prisma.scopeItem.count({
       where: {
         project_id: { in: projectIds },
-        end_date: { gte: weekStart, lte: weekEnd },
+        end_date: { lte: weekEnd },
         status: 'APROVADO',
         completion_date: null,
       },
@@ -165,7 +167,7 @@ const getPersonalDashboard = async (req, res) => {
     const taskCount = await prisma.task.count({
       where: {
         project_id: { in: projectIds },
-        end_date: { gte: weekStart, lte: weekEnd },
+        end_date: { lte: weekEnd },
         completed: false,
         OR: [
           { assignee_id: requester.id },
@@ -306,7 +308,7 @@ const getScopeItems = async (req, res) => {
 
     const where = {
       project_id: { in: projectIds },
-      end_date: { gte: weekStart, lte: weekEnd },
+      end_date: { lte: weekEnd },
       status: 'APROVADO',
       ...(tab === 'pendentes' ? { completion_date: null } : { completion_date: { not: null } }),
     }
@@ -353,7 +355,7 @@ const getTasks = async (req, res) => {
 
     const where = {
       project_id: { in: projectIds },
-      end_date: { gte: weekStart, lte: weekEnd },
+      end_date: { lte: weekEnd },
       completed: tab === 'concluidos',
       OR: [
         { assignee_id: requester.id },
