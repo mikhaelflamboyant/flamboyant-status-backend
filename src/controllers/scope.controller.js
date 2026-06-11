@@ -7,6 +7,7 @@ const TI_AREA = 'Tecnologia da Informação'
 const APPROVER_ROLES = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR']
 
 const { syncMentions } = require('../services/mentions.service')
+const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 
 const canMention = (requester, project) => {
   const isFromTI = requester.area === TI_AREA ||
@@ -138,6 +139,13 @@ const createScopeItem = async (req, res) => {
       })
     }
 
+    await logActivity({
+      project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.SCOPE_CREATED,
+      description: `${requester.name} adicionou a atividade "${title}" ao cronograma.`,
+    })
+
     return res.status(201).json({ ...item, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
@@ -199,6 +207,13 @@ const updateScopeItem = async (req, res) => {
         })
       }
 
+      await logActivity({
+        project_id: item.project_id,
+        user_id: requester.id,
+        action_type: ACTION_TYPES.SCOPE_UPDATED,
+        description: `${requester.name} atualizou a atividade "${title ?? item.title}" do cronograma.`,
+      })
+
       return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
     }
 
@@ -252,6 +267,13 @@ const updateScopeItem = async (req, res) => {
         requester,
       })
     }
+
+    await logActivity({
+      project_id: item.project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.SCOPE_UPDATED,
+      description: `${requester.name} atualizou a atividade "${title ?? item.title}" do cronograma.`,
+    })
 
     return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {

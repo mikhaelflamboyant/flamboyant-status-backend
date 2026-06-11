@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma')
 const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
 const logger = require('../lib/logger')
+const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 const closeFreshserviceTicket = async (ticketId) => {
   if (!ticketId || !process.env.FRESHSERVICE_DOMAIN || !process.env.FRESHSERVICE_API_KEY) return
   try {
@@ -570,6 +571,13 @@ const updateProject = async (req, res) => {
         }
       }
     }
+
+    await logActivity({
+      project_id: id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.PROJECT_EDITED,
+      description: `${requester.name} editou o projeto.`,
+    })
 
     return res.status(200).json(updated)
   } catch (err) {

@@ -3,6 +3,7 @@ const logger = require('../lib/logger')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 const { syncMentions } = require('../services/mentions.service')
+const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 
 const TI_AREA = 'Tecnologia da Informação'
 const canMention = (requester, project) => {
@@ -97,6 +98,13 @@ const createRequirement = async (req, res) => {
       })
     }
 
+    await logActivity({
+      project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.REQUIREMENT_UPDATED,
+      description: `${requester.name} cadastrou os requisitos do projeto.`,
+    })
+
     return res.status(201).json({ ...requirement, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
@@ -170,6 +178,13 @@ const updateRequirement = async (req, res) => {
         requester,
       })
     }
+
+    await logActivity({
+      project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.REQUIREMENT_UPDATED,
+      description: `${requester.name} atualizou os requisitos do projeto.`,
+    })
 
     return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {

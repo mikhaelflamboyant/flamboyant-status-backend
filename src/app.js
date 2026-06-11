@@ -47,6 +47,7 @@ app.use('/projects/:project_id/requirements', require('./routes/requirements.rou
 app.use('/projects/:project_id/tasks', require('./routes/tasks.routes'))
 app.use('/projects/:project_id/scope', require('./routes/scope.routes'))
 app.use('/management', require('./routes/management.routes'))
+app.use('/personal', require('./routes/personal.routes'))
 app.use('/status/:status_update_id/risks', require('./routes/risks.routes'))
 app.use('/notifications', require('./routes/notifications.routes'))
 app.use('/webhook', require('./routes/webhook.routes'))

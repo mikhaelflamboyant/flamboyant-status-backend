@@ -29,6 +29,7 @@ model User {
   scope_item_assignees ScopeItemAssignee[]
   mentions_made     Mention[] @relation("MentionAuthor")
   mentions_received Mention[] @relation("MentionedUser")
+  activity_logs     ActivityLog[]
 
   projects_led      Project[]            @relation("ProjectLeader")
   project_members   ProjectMember[]
@@ -73,6 +74,7 @@ model Project {
   phase_history  PhaseHistory[]
   mentions_in       Mention[] @relation("MentionProject")
   mentions_received Mention[] @relation("MentionedProject")
+  activity_logs     ActivityLog[]
 
   owner_id String?
   owner    User?   @relation("ProjectLeader", fields: [owner_id], references: [id])
@@ -325,4 +327,18 @@ model Mention {
   author            User     @relation("MentionAuthor", fields: [created_by], references: [id])
 
   @@index([source_type, source_id])
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  project_id  String
+  user_id     String
+  action_type String
+  description String
+  created_at  DateTime @default(now())
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id, created_at])
 }

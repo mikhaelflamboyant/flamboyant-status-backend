@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma')
 const logger = require('../lib/logger')
+const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
@@ -134,6 +135,13 @@ const createTask = async (req, res) => {
       })
     }
 
+    await logActivity({
+      project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.TASK_CREATED,
+      description: `${requester.name} criou a tarefa "${title}".`,
+    })
+
     return res.status(201).json({ ...taskWithAssignees, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
@@ -215,6 +223,13 @@ const updateTask = async (req, res) => {
       })
     }
 
+    await logActivity({
+      project_id: task.project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.TASK_UPDATED,
+      description: `${requester.name} atualizou a tarefa "${task.title}".`,
+    })
+
     return res.status(200).json({ ...updated, _mention_warning: mentionResult.invalidUserIds })
   } catch (err) {
     logger.error(err)
@@ -251,6 +266,13 @@ const completeTask = async (req, res) => {
       }
     })
     await touchProject(task.project_id)
+
+    await logActivity({
+      project_id: task.project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.TASK_COMPLETED,
+      description: `${requester.name} ${updated.completed ? 'concluiu' : 'reabriu'} a tarefa "${task.title}".`,
+    })
 
     return res.status(200).json(updated)
   } catch (err) {
