@@ -39,6 +39,7 @@ const startWeeklyReminderJob = () => {
           }
 
           for (const member of project.members) {
+            if (!member.user) continue
             usersToNotify.set(member.user.id, {
               email: member.user.email,
               name: member.user.name
