@@ -39,6 +39,23 @@ function getStatusReportTag(lastStatusDate) {
   return 'verde'
 }
 
+async function filterProjectIds(projectIds, { project_id, phase } = {}) {
+  let ids = projectIds
+  if (project_id && ids.includes(project_id)) {
+    ids = [project_id]
+  } else if (project_id) {
+    ids = []
+  }
+  if (phase && ids.length > 0) {
+    const matching = await prisma.project.findMany({
+      where: { id: { in: ids }, current_phase: phase },
+      select: { id: true },
+    })
+    ids = matching.map(p => p.id)
+  }
+  return ids
+}
+
 async function getResponsibleProjectIds(userId) {
   const requesters = await prisma.projectRequester.findMany({
     where: {
@@ -61,7 +78,9 @@ const getPersonalDashboard = async (req, res) => {
     const requester = req.user
     if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
 
-    const projectIds = await getResponsibleProjectIds(requester.id)
+    const { project_id, phase } = req.query
+    const allProjectIds = await getResponsibleProjectIds(requester.id)
+    const projectIds = await filterProjectIds(allProjectIds, { project_id, phase })
     if (projectIds.length === 0) {
       return res.status(200).json({
         goLive: [], statusReports: [], scopeItems: [], tasks: [], feed: [],
@@ -213,7 +232,9 @@ const getGoLive = async (req, res) => {
     const pageSize = 10
     const skip = (page - 1) * pageSize
 
-    const projectIds = await getResponsibleProjectIds(requester.id)
+    const { project_id, phase } = req.query
+    const allProjectIds = await getResponsibleProjectIds(requester.id)
+    const projectIds = await filterProjectIds(allProjectIds, { project_id, phase })
     const now = new Date()
     const tenDaysFromNow = new Date(now)
     tenDaysFromNow.setDate(now.getDate() + 10)
@@ -251,9 +272,10 @@ const getStatusReports = async (req, res) => {
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
     const skip = (page - 1) * pageSize
-    const tab = req.query.tab || 'pendentes'
 
-    const projectIds = await getResponsibleProjectIds(requester.id)
+    const { tab = 'pendentes', project_id, phase } = req.query
+    const allProjectIds = await getResponsibleProjectIds(requester.id)
+    const projectIds = await filterProjectIds(allProjectIds, { project_id, phase })
     const { start: weekStart } = getCurrentWeekRange()
 
     const projects = await prisma.project.findMany({
@@ -310,9 +332,10 @@ const getScopeItems = async (req, res) => {
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
     const skip = (page - 1) * pageSize
-    const tab = req.query.tab || 'pendentes'
 
-    const projectIds = await getResponsibleProjectIds(requester.id)
+    const { tab = 'pendentes', project_id, phase } = req.query
+    const allProjectIds = await getResponsibleProjectIds(requester.id)
+    const projectIds = await filterProjectIds(allProjectIds, { project_id, phase })
     const { start: weekStart, end: weekEnd } = getCurrentWeekRange()
 
     const where = {
@@ -357,9 +380,10 @@ const getTasks = async (req, res) => {
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
     const skip = (page - 1) * pageSize
-    const tab = req.query.tab || 'pendentes'
 
-    const projectIds = await getResponsibleProjectIds(requester.id)
+    const { tab = 'pendentes', project_id, phase } = req.query
+    const allProjectIds = await getResponsibleProjectIds(requester.id)
+    const projectIds = await filterProjectIds(allProjectIds, { project_id, phase })
     const { start: weekStart, end: weekEnd } = getCurrentWeekRange()
 
     const where = {
@@ -408,7 +432,9 @@ const getFeed = async (req, res) => {
     const pageSize = 10
     const skip = (page - 1) * pageSize
 
-    const projectIds = await getResponsibleProjectIds(requester.id)
+    const { project_id, phase } = req.query
+    const allProjectIds = await getResponsibleProjectIds(requester.id)
+    const projectIds = await filterProjectIds(allProjectIds, { project_id, phase })
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
@@ -448,11 +474,24 @@ const getFeed = async (req, res) => {
   }
 }
 
+const getPersonalProjects = async (req, res) => {
+  try {
+    const requester = req.user
+    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    const projectIds = await getResponsibleProjectIds(requester.id)
+    const projects = await prisma.project.findMany({
+      where: { id: { in: projectIds } },
+      select: { id: true, title: true, current_phase: true },
+      orderBy: { title: 'asc' },
+    })
+    return res.status(200).json(projects)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao listar projetos' })
+  }
+}
+
 module.exports = {
-  getPersonalDashboard,
-  getGoLive,
-  getStatusReports,
-  getScopeItems,
-  getTasks,
-  getFeed,
+  getPersonalDashboard, getGoLive, getStatusReports,
+  getScopeItems, getTasks, getFeed, getPersonalProjects,
 }
