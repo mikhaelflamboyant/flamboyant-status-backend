@@ -211,7 +211,7 @@ const getDashboard = async (req, res) => {
   go_live_projects: goLiveProjects,
   active_projects: activeProjects,
   totals: {
-    active: activeProjects.length + goLiveProjects.length,
+    active: activeProjects.length,
     active_only: activeProjects.length,
     in_execution: inExecution,
     pdti_total: pdtiTotal,
