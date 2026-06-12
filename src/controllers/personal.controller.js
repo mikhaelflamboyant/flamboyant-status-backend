@@ -86,7 +86,7 @@ const getPersonalDashboard = async (req, res) => {
     })
 
     const projects = await prisma.project.findMany({
-      where: { id: { in: projectIds } },
+      where: { id: { in: projectIds }, current_phase: { in: EXECUTION_PHASES } },
       select: {
         id: true, title: true,
         status_updates: {
