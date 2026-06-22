@@ -7,21 +7,24 @@ const closeFreshserviceTicket = async (ticketId) => {
   try {
     const credentials = Buffer.from(`${process.env.FRESHSERVICE_API_KEY}:X`).toString('base64')
     const url = `https://${process.env.FRESHSERVICE_DOMAIN}/api/v2/tickets/${ticketId}`
-    console.log('Chamando FreshService:', url)
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Basic ${credentials}`,
       },
-      body: JSON.stringify({ status: 5 }),
+      body: JSON.stringify({
+        status: 5,
+        group_id: 23000230171,
+        responder_id: 23001214577,
+        department_id: 23000126436,
+        category: 'Sistemas',
+        sub_category: 'Outros',
+      }),
     })
     console.log('FreshService status:', response.status)
-    const text = await response.text()
-    console.log('FreshService response:', text)
   } catch (err) {
     logger.error({ err }, 'Erro ao fechar ticket no FreshService')
-    console.log('Erro FreshService:', err)
   }
 }
 
