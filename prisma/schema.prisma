@@ -53,6 +53,7 @@ model Project {
   budget_actual  Float?
   go_live        DateTime?
   start_date     DateTime?
+  requested_at   DateTime?
   legacy Boolean @default(false)
   costs ProjectCost[]
   current_phase  String    @default("RECEBIDA")

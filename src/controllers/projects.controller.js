@@ -277,6 +277,7 @@ const createProject = async (req, res) => {
         traffic_light: autoTrafficLight,
         current_phase: req.body.current_phase || 'RECEBIDA',
         legacy: req.body.legacy === true || req.body.legacy === 'true',
+        requested_at: new Date(),
       }
     })
 
@@ -430,6 +431,7 @@ const updateProject = async (req, res) => {
       ...(current_phase && { current_phase }),
       ...(traffic_light && { traffic_light }),
       ...(completion_pct !== undefined && { completion_pct }),
+      ...(req.body.requested_at !== undefined && { requested_at: req.body.requested_at ? new Date(req.body.requested_at) : null }),
     }
 
     if (go_live) {
@@ -681,6 +683,7 @@ const approveFreshservice = async (req, res) => {
         origin: 'NORMAL',
         current_phase: 'BACKLOG',
         ...(description && { description }),
+        requested_at: new Date(),
       }
     })
 
