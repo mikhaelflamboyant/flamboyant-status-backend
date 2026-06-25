@@ -102,6 +102,7 @@ const startWeeklyReminderJob = () => {
           AND "traffic_light" = 'VERDE'
           AND "archived" = false
           AND "origin" = 'NORMAL'
+          AND "current_phase" NOT IN ('BACKLOG', 'SUPORTE', 'CANCELADO', 'ENTREGUE')
       `
       if (result > 0) {
         console.log(`[CRON] ${result} projeto(s) com farol atualizado para VERMELHO`)

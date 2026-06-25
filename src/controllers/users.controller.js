@@ -171,17 +171,26 @@ const deleteUser = async (req, res) => {
       }
     }
 
-    await prisma.apiToken.deleteMany({ where: { created_by: id } })
-    await prisma.statusUpdate.deleteMany({ where: { author_id: id } })
-    await prisma.task.deleteMany({ where: { author_id: id } })
-    await prisma.task.updateMany({ where: { assignee_id: id }, data: { assignee_id: null } })
-    await prisma.requirement.deleteMany({ where: { author_id: id } })
-    await prisma.requirementHistory.deleteMany({ where: { editor_id: id } })
-    await prisma.notification.deleteMany({ where: { user_id: id } })
-    await prisma.projectRequester.deleteMany({ where: { user_id: id } })
-    await prisma.projectMember.deleteMany({ where: { user_id: id } })
-    await prisma.user.delete({ where: { id } })
-        return res.status(200).json({ message: 'Usuário excluído com sucesso' })
+    await prisma.$transaction([
+      prisma.apiToken.deleteMany({ where: { created_by: id } }),
+      prisma.statusUpdate.deleteMany({ where: { author_id: id } }),
+      prisma.task.deleteMany({ where: { author_id: id } }),
+      prisma.task.updateMany({ where: { assignee_id: id }, data: { assignee_id: null } }),
+      prisma.taskAssignee.deleteMany({ where: { user_id: id } }),
+      prisma.requirement.deleteMany({ where: { author_id: id } }),
+      prisma.requirementHistory.deleteMany({ where: { editor_id: id } }),
+      prisma.notification.deleteMany({ where: { user_id: id } }),
+      prisma.activityLog.deleteMany({ where: { user_id: id } }),
+      prisma.mention.deleteMany({ where: { created_by: id } }),
+      prisma.goLiveHistory.deleteMany({ where: { changed_by: id } }),
+      prisma.phaseHistory.deleteMany({ where: { changed_by: id } }),
+      prisma.scopeItem.updateMany({ where: { created_by: id }, data: { created_by: null } }),
+      prisma.project.updateMany({ where: { owner_id: id }, data: { owner_id: null } }),
+      prisma.projectRequester.deleteMany({ where: { user_id: id } }),
+      prisma.projectMember.deleteMany({ where: { user_id: id } }),
+      prisma.user.delete({ where: { id } }),
+    ])
+    return res.status(200).json({ message: 'Usuário excluído com sucesso' })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir usuário' })

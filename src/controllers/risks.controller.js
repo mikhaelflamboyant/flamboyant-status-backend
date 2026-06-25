@@ -22,7 +22,7 @@ const createRisk = async (req, res) => {
 
     const isOwner = statusUpdate.project.owner_id === requester.id
     const isMember = statusUpdate.project.members.some(m => m.user_id === requester.id)
-    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
     if (!isOwner && !isMember && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para adicionar riscos neste projeto' })
@@ -58,7 +58,7 @@ const updateRisk = async (req, res) => {
 
     const isOwner = risk.status_update.project.owner_id === requester.id
     const isMember = risk.status_update.project.members.some(m => m.user_id === requester.id)
-    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
     if (!isOwner && !isMember && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para editar este risco' })
@@ -98,7 +98,7 @@ const deleteRisk = async (req, res) => {
 
     const isOwner = risk.status_update.project.owner_id === requester.id
     const isMember = risk.status_update.project.members.some(m => m.user_id === requester.id)
-    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)
+    const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
     if (!isOwner && !isMember && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para excluir este risco' })

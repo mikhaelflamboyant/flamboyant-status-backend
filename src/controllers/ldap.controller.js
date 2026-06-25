@@ -25,10 +25,18 @@ const ldapLogin = async (req, res) => {
           name: Array.isArray(name) ? name[0] : name,
           password: '',
           role: 'ANALISTA',
-          status: 'ATIVO',
-          area: 'Tecnologia da Informação',
+          status: 'PENDENTE',
+          area: '',
         }
       })
+    }
+
+    if (user.status === 'PENDENTE') {
+      return res.status(403).json({ error: 'Seu acesso está aguardando aprovação pelo administrador.' })
+    }
+
+    if (user.status === 'RECUSADO') {
+      return res.status(403).json({ error: 'Seu acesso foi recusado. Entre em contato com o administrador.' })
     }
 
     const token = jwt.sign(

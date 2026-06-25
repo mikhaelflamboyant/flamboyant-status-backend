@@ -115,7 +115,7 @@ const createStatusUpdate = async (req, res) => {
       where: {
         status: 'ATIVO',
         role: { in: ['GERENTE', 'COORDENADOR', 'SUPERINTENDENTE'] },
-        area: { in: project.area.split(', ') },
+        area: { in: (project.area || '').split(', ').filter(Boolean) },
         NOT: { area: 'Tecnologia da Informação' }
       }
     })

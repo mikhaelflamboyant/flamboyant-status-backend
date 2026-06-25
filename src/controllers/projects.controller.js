@@ -341,7 +341,7 @@ const createProject = async (req, res) => {
       where: {
         status: 'ATIVO',
         role: { in: ['GERENTE', 'COORDENADOR'] },
-        area: { in: project.area.split(', ') }
+        area: { in: (project.area || '').split(', ').filter(Boolean) }
       }
     })
 
