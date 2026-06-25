@@ -30,10 +30,6 @@ app.use(cors({
 }))
 
 app.use(express.json({ strict: false }))
-app.use((req, res, next) => {
-  req.setEncoding('utf8')
-  next()
-})
 
 app.get('/health', (req, res) => res.json({ status: 'ok', message: 'Servidor no ar' }))
 
