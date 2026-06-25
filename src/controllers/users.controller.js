@@ -197,4 +197,35 @@ const deleteUser = async (req, res) => {
   }
 }
 
-module.exports = { listUsers, getUserById, updateUserRole, listPendingUsers, approveUser, rejectUser, deleteUser }
+const deactivateUser = async (req, res) => {
+  try {
+    const { id } = req.params
+    const requester = req.user
+
+    if (!CAN_APPROVE.includes(requester.role)) {
+      return res.status(403).json({ error: 'Sem permissão para desativar usuários' })
+    }
+
+    const target = await prisma.user.findUnique({ where: { id } })
+    if (!target) return res.status(404).json({ error: 'Usuário não encontrado' })
+
+    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[target.role] || 0) && !['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
+      return res.status(403).json({ error: 'Você não pode desativar um usuário com perfil igual ou superior ao seu' })
+    }
+
+    if (!['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
+      const requesterUser = await prisma.user.findUnique({ where: { id: requester.id } })
+      if (requesterUser.area !== target.area) {
+        return res.status(403).json({ error: 'Você só pode desativar usuários da mesma área que a sua' })
+      }
+    }
+
+    await prisma.user.update({ where: { id }, data: { status: 'RECUSADO' } })
+    return res.status(200).json({ message: 'Usuário desativado com sucesso' })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao desativar usuário' })
+  }
+}
+
+module.exports = { listUsers, getUserById, updateUserRole, listPendingUsers, approveUser, rejectUser, deleteUser, deactivateUser }
