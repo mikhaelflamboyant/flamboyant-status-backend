@@ -15,13 +15,14 @@ const ldapLogin = async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas no Active Directory.' })
     }
 
-    let user = await prisma.user.findUnique({ where: { email } })
+    const normalizedEmail = String(email).toLowerCase().trim()
+    let user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
 
     if (!user) {
-      const name = ldapUser.displayName || ldapUser.cn || email
+      const name = ldapUser.displayName || ldapUser.cn || normalizedEmail
       user = await prisma.user.create({
         data: {
-          email,
+          email: normalizedEmail,
           name: Array.isArray(name) ? name[0] : name,
           password: '',
           role: 'ANALISTA',
@@ -69,11 +70,12 @@ const ldapSync = async (req, res) => {
     let existing = 0
 
     for (const entry of entries) {
-      const email = entry.mail
-      const name = entry.displayName || entry.cn || email
-      if (!email) continue
+      const rawEmail = Array.isArray(entry.mail) ? entry.mail[0] : entry.mail
+      const name = entry.displayName || entry.cn || rawEmail
+      if (!rawEmail) continue
 
-      const existing_user = await prisma.user.findUnique({ where: { email: Array.isArray(email) ? email[0] : email } })
+      const normalizedEmail = String(rawEmail).toLowerCase().trim()
+      const existing_user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
       if (existing_user) {
         existing++
         continue
@@ -81,11 +83,11 @@ const ldapSync = async (req, res) => {
 
       await prisma.user.create({
         data: {
-          email: Array.isArray(email) ? email[0] : email,
+          email: normalizedEmail,
           name: Array.isArray(name) ? name[0] : name,
           password: '',
           role: 'ANALISTA',
-          status: 'ATIVO',
+          status: 'PENDENTE',
           area: '',
         }
       })

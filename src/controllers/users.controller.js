@@ -148,55 +148,6 @@ const rejectUser = async (req, res) => {
   }
 }
 
-const deleteUser = async (req, res) => {
-  try {
-    const { id } = req.params
-    const requester = req.user
-
-    if (!CAN_APPROVE.includes(requester.role)) {
-      return res.status(403).json({ error: 'Sem permissão para excluir usuários' })
-    }
-
-    const target = await prisma.user.findUnique({ where: { id } })
-    if (!target) return res.status(404).json({ error: 'Usuário não encontrado' })
-
-    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[target.role] || 0) && !['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
-      return res.status(403).json({ error: 'Você não pode excluir um usuário com perfil igual ou superior ao seu' })
-    }
-
-    if (!['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
-      const requesterUser = await prisma.user.findUnique({ where: { id: requester.id } })
-      if (requesterUser.area !== target.area) {
-        return res.status(403).json({ error: 'Você só pode excluir usuários da mesma área que a sua' })
-      }
-    }
-
-    await prisma.$transaction([
-      prisma.apiToken.deleteMany({ where: { created_by: id } }),
-      prisma.statusUpdate.deleteMany({ where: { author_id: id } }),
-      prisma.task.deleteMany({ where: { author_id: id } }),
-      prisma.task.updateMany({ where: { assignee_id: id }, data: { assignee_id: null } }),
-      prisma.taskAssignee.deleteMany({ where: { user_id: id } }),
-      prisma.requirement.deleteMany({ where: { author_id: id } }),
-      prisma.requirementHistory.deleteMany({ where: { editor_id: id } }),
-      prisma.notification.deleteMany({ where: { user_id: id } }),
-      prisma.activityLog.deleteMany({ where: { user_id: id } }),
-      prisma.mention.deleteMany({ where: { created_by: id } }),
-      prisma.goLiveHistory.deleteMany({ where: { changed_by: id } }),
-      prisma.phaseHistory.deleteMany({ where: { changed_by: id } }),
-      prisma.scopeItem.updateMany({ where: { created_by: id }, data: { created_by: null } }),
-      prisma.project.updateMany({ where: { owner_id: id }, data: { owner_id: null } }),
-      prisma.projectRequester.deleteMany({ where: { user_id: id } }),
-      prisma.projectMember.deleteMany({ where: { user_id: id } }),
-      prisma.user.delete({ where: { id } }),
-    ])
-    return res.status(200).json({ message: 'Usuário excluído com sucesso' })
-  } catch (err) {
-    logger.error(err)
-    return res.status(500).json({ error: 'Erro ao excluir usuário' })
-  }
-}
-
 const deactivateUser = async (req, res) => {
   try {
     const { id } = req.params
@@ -228,4 +179,4 @@ const deactivateUser = async (req, res) => {
   }
 }
 
-module.exports = { listUsers, getUserById, updateUserRole, listPendingUsers, approveUser, rejectUser, deleteUser, deactivateUser }
+module.exports = { listUsers, getUserById, updateUserRole, listPendingUsers, approveUser, rejectUser, deactivateUser }

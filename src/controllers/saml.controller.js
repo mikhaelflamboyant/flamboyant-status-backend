@@ -22,13 +22,14 @@ const samlCallback = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=email_not_found`)
     }
 
-    let user = await prisma.user.findUnique({ where: { email } })
+    const normalizedEmail = String(email).toLowerCase().trim()
+    let user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
 
     if (!user) {
       user = await prisma.user.create({
         data: {
-          email,
-          name: name || email,
+          email: normalizedEmail,
+          name: name || normalizedEmail,
           password: '',
           role: 'ANALISTA',
           status: 'PENDENTE',
