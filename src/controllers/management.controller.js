@@ -24,98 +24,97 @@ const getDashboard = async (req, res) => {
           current_phase: { notIn: ['BACKLOG', 'SUPORTE'] }
         },
         select: {
-          id: true, traffic_light: true, current_phase: true,
-          business_unit: true, area: true, completion_pct: true,
-          go_live: true, title: true, created_at: true
-        }
+          id: true, title: true, area: true, traffic_light: true,
+          current_phase: true, go_live: true, completion_pct: true, level: true,
+          requested_at: true,
+        },
+        orderBy: { created_at: 'desc' }
       }),
-      prisma.project.count({ where: { archived: true, current_phase: { not: 'CANCELADO' } } }),
+      prisma.project.count({
+        where: { archived: true, origin: 'NORMAL', current_phase: { not: 'CANCELADO' } }
+      }),
       prisma.project.findMany({
         where: { current_phase: 'BACKLOG', archived: false, origin: 'NORMAL' },
         select: {
-          id: true, title: true, area: true, business_unit: true,
-          traffic_light: true, current_phase: true, go_live: true,
-          completion_pct: true, created_at: true
+          id: true, title: true, area: true, traffic_light: true,
+          current_phase: true, go_live: true, requested_at: true,
         },
         orderBy: { created_at: 'desc' }
       }),
       prisma.project.findMany({
         where: { current_phase: 'SUPORTE', archived: false, origin: 'NORMAL' },
         select: {
-          id: true, title: true, area: true, business_unit: true,
-          traffic_light: true, current_phase: true, go_live: true,
-          completion_pct: true, created_at: true
+          id: true, title: true, area: true, traffic_light: true,
+          current_phase: true, go_live: true, requested_at: true,
         },
         orderBy: { created_at: 'desc' }
       }),
-      prisma.project.findMany({
-        where: { 
-          archived: true, 
-          origin: 'NORMAL',
-          current_phase: { not: 'CANCELADO' }
-        },
-        select: {
-          id: true, traffic_light: true, current_phase: true,
-          business_unit: true, area: true, completion_pct: true,
-          go_live: true, title: true, created_at: true
-        }
+      prisma.project.count({
+        where: { archived: true, origin: 'NORMAL' }
       }),
     ])
 
-    const byFarol = {
-      VERDE: activeProjects.filter(p => p.traffic_light === 'VERDE').length,
-      AMARELO: activeProjects.filter(p => p.traffic_light === 'AMARELO').length,
-      VERMELHO: activeProjects.filter(p => p.traffic_light === 'VERMELHO').length,
-    }
+    const inExecutionPhases = ['DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE']
+    const inExecution = activeProjects.filter(p => inExecutionPhases.includes(p.current_phase)).length
 
     const PDTI_PHASES = ['DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE', 'SUPORTE', 'ENTREGUE']
-
-    const pdtiProjects = [
-      ...activeProjects.filter(p => PDTI_PHASES.includes(p.current_phase)),
+    const pdtiCandidates = [
+      ...activeProjects,
       ...goLiveProjects,
-      ...finishedProjects,
+    ].filter(p => PDTI_PHASES.includes(p.current_phase))
+    const pdtiTotal = pdtiCandidates.length
+    const pdtiOnTime = pdtiCandidates.filter(p => p.traffic_light === 'VERDE').length
+
+    const allActiveForStats = [
+      ...activeProjects,
+      ...goLiveProjects,
     ]
 
-    const pdtiTotal = pdtiProjects.length
-    const pdtiOnTime = pdtiProjects.filter(p => p.traffic_light === 'VERDE').length
+    const byFarol = allActiveForStats.reduce((acc, p) => {
+      acc[p.traffic_light] = (acc[p.traffic_light] || 0) + 1
+      return acc
+    }, { VERDE: 0, AMARELO: 0, VERMELHO: 0 })
 
-    const inExecution = activeProjects.filter(p =>
-      ['DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE'].includes(p.current_phase)
-    ).length
-
-    const phases = [
+    const PHASE_ORDER = [
       'RECEBIDA', 'ENTREVISTA_SOLICITANTE', 'LEVANTAMENTO_REQUISITOS',
       'ANALISE_SOLUCAO', 'DESENVOLVIMENTO', 'TESTES',
       'VALIDACAO_SOLICITANTE', 'ENTREGUE', 'SUPORTE'
     ]
-    const byPhase = {}
-    for (const phase of phases) {
-      byPhase[phase] = activeProjects.filter(p => p.current_phase === phase).length
-    }
+    const byPhase = allActiveForStats.reduce((acc, p) => {
+      acc[p.current_phase] = (acc[p.current_phase] || 0) + 1
+      return acc
+    }, {})
 
-    const units = ['Corporativo', 'Shopping', 'Urbanismo', 'Agropecuária', 'Instituto']
-    const byUnit = {}
-    for (const unit of units) {
-      byUnit[unit] = activeProjects.filter(p => p.business_unit === unit).length
-    }
-    byUnit['Sem unidade'] = activeProjects.filter(p => !p.business_unit).length
+    const byUnit = allActiveForStats.reduce((acc, p) => {
+      const areas = (p.area || '').split(', ').filter(Boolean)
+      areas.forEach(area => {
+        acc[area] = (acc[area] || 0) + 1
+      })
+      return acc
+    }, {})
+
+    const byLevel = allActiveForStats.reduce((acc, p) => {
+      const key = p.level || 'null'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+
+    const overdue = allActiveForStats.filter(p => {
+      if (p.traffic_light === 'VERMELHO') return true
+      if (p.go_live && new Date(p.go_live) < new Date() && p.current_phase !== 'ENTREGUE') return true
+      return false
+    }).length
 
     const avgCompletion = activeProjects.length > 0
-      ? Math.round(activeProjects.reduce((acc, p) => acc + p.completion_pct, 0) / activeProjects.length)
+      ? Math.round(activeProjects.reduce((sum, p) => sum + (p.completion_pct || 0), 0) / activeProjects.length)
       : 0
-
-    const overdue = activeProjects.filter(p =>
-      p.traffic_light === 'VERMELHO' ||
-      (p.go_live && new Date(p.go_live) < new Date())
-    ).length
 
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-
     const projectsWithRecentStatus = await prisma.statusUpdate.findMany({
       where: { created_at: { gte: sevenDaysAgo } },
       select: { project_id: true },
-      distinct: ['project_id'],
+      distinct: ['project_id']
     })
     const recentStatusIds = new Set(projectsWithRecentStatus.map(s => s.project_id))
     const noRecentStatus = activeProjects.filter(p => !recentStatusIds.has(p.id)).length
@@ -125,119 +124,110 @@ const getDashboard = async (req, res) => {
     const startOfMonth = new Date()
     startOfMonth.setDate(1)
     startOfMonth.setHours(0, 0, 0, 0)
-    const deliveredThisMonth = await prisma.project.count({
-      where: {
-        archived_at: { gte: startOfMonth },
-        archived: true,
-        current_phase: { not: 'CANCELADO' }
-      }
-    })
 
-    const cancelledThisMonth = await prisma.project.count({
-      where: {
-        cancelled_at: { gte: startOfMonth },
-        current_phase: 'CANCELADO'
-      }
-    })
+    const [
+      deliveredThisMonth, cancelledThisMonth, createdThisMonth,
+    ] = await Promise.all([
+      prisma.project.count({
+        where: { archived_at: { gte: startOfMonth }, archived: true, current_phase: { not: 'CANCELADO' } }
+      }),
+      prisma.project.count({
+        where: { cancelled_at: { gte: startOfMonth }, current_phase: 'CANCELADO' }
+      }),
+      prisma.project.count({
+        where: { created_at: { gte: startOfMonth }, origin: 'NORMAL' }
+      }),
+    ])
 
-    const byLevel = await prisma.project.groupBy({
-      by: ['level'],
-      where: { archived: false, origin: 'NORMAL' },
-      _count: { id: true }
-    })
-    const levelMap = { A: 0, B: 0, C: 0, D: 0, null: 0 }
-    for (const l of byLevel) {
-      const key = l.level || 'null'
-      if (key in levelMap) levelMap[key] = l._count.id
+    const byLevelMap = { A: 0, B: 0, C: 0, D: 0, null: 0 }
+    for (const [k, v] of Object.entries(byLevel)) {
+      byLevelMap[k] = v
     }
 
     const deliveredProjects = await prisma.project.findMany({
-      where: { archived: true, archived_at: { not: null }, origin: 'NORMAL' },
-      select: { created_at: true, archived_at: true, business_unit: true }
+      where: { archived: true, origin: 'NORMAL', current_phase: { not: 'CANCELADO' }, archived_at: { not: null } },
+      select: { area: true, created_at: true, archived_at: true }
     })
-    const unitTimes = {}
+
+    const deliveryByUnit = {}
+    let globalDeliverySum = 0
+    let globalDeliveryCount = 0
     for (const p of deliveredProjects) {
-      const unit = p.business_unit || 'Sem unidade'
+      if (!p.created_at || !p.archived_at) continue
       const days = Math.round((new Date(p.archived_at) - new Date(p.created_at)) / (1000 * 60 * 60 * 24))
-      if (!unitTimes[unit]) unitTimes[unit] = []
-      unitTimes[unit].push(days)
+      if (days < 0) continue
+      globalDeliverySum += days
+      globalDeliveryCount++
+      const areas = (p.area || '').split(', ').filter(Boolean)
+      areas.forEach(area => {
+        if (!deliveryByUnit[area]) deliveryByUnit[area] = { sum: 0, count: 0 }
+        deliveryByUnit[area].sum += days
+        deliveryByUnit[area].count++
+      })
     }
     const avgDeliveryByUnit = {}
-    for (const [unit, times] of Object.entries(unitTimes)) {
-      avgDeliveryByUnit[unit] = Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+    for (const [area, { sum, count }] of Object.entries(deliveryByUnit)) {
+      avgDeliveryByUnit[area] = Math.round(sum / count)
     }
-    const globalAvgDelivery = deliveredProjects.length > 0
-      ? Math.round(
-          deliveredProjects.reduce((acc, p) =>
-            acc + Math.round((new Date(p.archived_at) - new Date(p.created_at)) / (1000 * 60 * 60 * 24)), 0
-          ) / deliveredProjects.length
-        )
-      : null
+    const globalAvgDelivery = globalDeliveryCount > 0 ? Math.round(globalDeliverySum / globalDeliveryCount) : 0
 
-    const today = new Date()
-    const sixMonthsLater = new Date()
-    sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6)
-    const upcomingGoLives = await prisma.project.findMany({
-      where: {
-        archived: false,
-        origin: 'NORMAL',
-        go_live: { gte: today, lte: sixMonthsLater }
-      },
+    const goLiveProjectsForTimeline = await prisma.project.findMany({
+      where: { go_live: { not: null }, archived: false, origin: 'NORMAL' },
       select: { go_live: true }
     })
     const goLiveByMonth = {}
-    for (const p of upcomingGoLives) {
-      const key = new Date(p.go_live).toISOString().slice(0, 7) // "2026-05"
+    const now = new Date()
+    for (const p of goLiveProjectsForTimeline) {
+      const gl = new Date(p.go_live)
+      if (gl < new Date(now.getFullYear(), now.getMonth(), 1)) continue
+      const key = gl.toISOString().slice(0, 7)
       goLiveByMonth[key] = (goLiveByMonth[key] || 0) + 1
     }
 
-    const allActiveUserIds = new Set()
-    const projectMembers = await prisma.projectMember.findMany({
-      where: { project: { archived: false, origin: 'NORMAL' } },
-      select: { user_id: true }
-    })
-    const projectRequesters = await prisma.projectRequester.findMany({
+    const activeUsersCount = await prisma.user.count({ where: { status: 'ATIVO', area: TI_AREA } })
+    const usersWithProjectsData = await prisma.projectRequester.findMany({
       where: { project: { archived: false } },
-      select: { user_id: true }
+      select: { user_id: true },
+      distinct: ['user_id']
     })
-    projectMembers.forEach(m => m.user_id && allActiveUserIds.add(m.user_id))
-    projectRequesters.forEach(r => r.user_id && allActiveUserIds.add(r.user_id))
-
-    const totalActiveUsers = await prisma.user.count({ where: { status: 'ATIVO' } })
-    const usersWithoutProjects = totalActiveUsers - allActiveUserIds.size
+    const usersWithProjectsSet = new Set(usersWithProjectsData.map(u => u.user_id).filter(Boolean))
+    const tiUsers = await prisma.user.findMany({ where: { status: 'ATIVO', area: TI_AREA }, select: { id: true } })
+    const usersWithoutProjects = tiUsers.filter(u => !usersWithProjectsSet.has(u.id)).length
 
     return res.status(200).json({
-  backlog_projects: backlogProjects,
-  go_live_projects: goLiveProjects,
-  active_projects: activeProjects,
-  totals: {
-    active: activeProjects.length,
-    active_only: activeProjects.length,
-    in_execution: inExecution,
-    pdti_total: pdtiTotal,
-    pdti_on_time: pdtiOnTime,
-    archived: archivedProjects,
-    overdue,
-    avg_completion: avgCompletion,
-    no_recent_status: noRecentStatus,
-    no_go_live: noGoLive,
-    users_without_projects: usersWithoutProjects,
-    backlog: backlogProjects.length,
-    go_live: goLiveProjects.length,
-    delivered_this_month: deliveredThisMonth,
-    cancelled_this_month: cancelledThisMonth,
-    },
-    by_farol: byFarol,
-    by_phase: byPhase,
-    by_unit: byUnit,
-    by_level: levelMap,
-    avg_delivery_by_unit: avgDeliveryByUnit,
-    avg_delivery_global: globalAvgDelivery,
-    go_live_timeline: goLiveByMonth,
-  })
+      backlog_projects: backlogProjects,
+      go_live_projects: goLiveProjects,
+      active_projects: activeProjects,
+      totals: {
+        active: activeProjects.length,
+        active_only: activeProjects.length,
+        in_execution: inExecution,
+        pdti_total: pdtiTotal,
+        pdti_on_time: pdtiOnTime,
+        archived: archivedProjects,
+        overdue,
+        avg_completion: avgCompletion,
+        no_recent_status: noRecentStatus,
+        no_go_live: noGoLive,
+        users_without_projects: usersWithoutProjects,
+        backlog: backlogProjects.length,
+        go_live: goLiveProjects.length,
+        support: goLiveProjects.length,
+        delivered_this_month: deliveredThisMonth,
+        cancelled_this_month: cancelledThisMonth,
+        created_this_month: createdThisMonth,
+      },
+      by_farol: byFarol,
+      by_phase: byPhase,
+      by_unit: byUnit,
+      by_level: byLevelMap,
+      avg_delivery_by_unit: avgDeliveryByUnit,
+      avg_delivery_global: globalAvgDelivery,
+      go_live_timeline: goLiveByMonth,
+    })
   } catch (err) {
     logger.error(err)
-    return res.status(500).json({ error: 'Erro ao carregar dashboard' })
+    return res.status(500).json({ error: 'Erro ao carregar painel de gestão' })
   }
 }
 
@@ -253,7 +243,8 @@ const getUsers = async (req, res) => {
       select: {
         id: true, name: true, email: true, area: true, role: true,
         project_requests: {
-          include: {
+          select: {
+            type: true,
             project: {
               select: {
                 id: true, title: true, traffic_light: true,
@@ -279,6 +270,11 @@ const getUsers = async (req, res) => {
     })
 
     const usersWithProjects = users.map(user => {
+      const projectsAsResponsavel = user.project_requests
+        .filter(r => r.type === 'RESPONSAVEL')
+        .map(r => r.project)
+        .filter(p => !p.archived)
+
       const projectsAsRequester = user.project_requests
         .map(r => r.project)
         .filter(p => !p.archived)
@@ -300,6 +296,8 @@ const getUsers = async (req, res) => {
         role: user.role,
         projects: allProjects,
         projects_count: allProjects.length,
+        responsavel_projects: projectsAsResponsavel,
+        responsavel_count: projectsAsResponsavel.length,
         projects_by_phase: allProjects.reduce((acc, p) => {
           acc[p.current_phase] = (acc[p.current_phase] || 0) + 1
           return acc
@@ -323,7 +321,27 @@ const getUsers = async (req, res) => {
         return acc
       }, {})
 
-return res.status(200).json({ by_area: byArea, without_projects: usersWithoutProjects })
+    const responsaveis = usersWithProjects
+      .filter(u => u.area === TI_AREA)
+      .map(u => ({
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        area: u.area,
+        carga: u.responsavel_count,
+        projects: u.responsavel_projects,
+        farol: u.responsavel_projects.reduce((acc, p) => {
+          acc[p.traffic_light] = (acc[p.traffic_light] || 0) + 1
+          return acc
+        }, {}),
+      }))
+      .sort((a, b) => b.carga - a.carga)
+
+    return res.status(200).json({
+      by_area: byArea,
+      without_projects: usersWithoutProjects,
+      responsaveis,
+    })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao carregar usuários' })
@@ -334,109 +352,105 @@ const getPendingApprovals = async (req, res) => {
   try {
     const requester = req.user
     if (!canAccessManagement(requester)) {
-      return res.status(403).json({ error: 'Sem permissão para acessar o painel de gestão' })
+      return res.status(403).json({ error: 'Sem permissão para acessar aprovações' })
     }
 
-    const { project_id, user_id, order = 'desc', page = 1, page_size = 10 } = req.query
-    const pageNum = Math.max(1, parseInt(page))
-    const pageSizeNum = Math.max(1, Math.min(100, parseInt(page_size)))
+    const page = parseInt(req.query.page) || 1
+    const pageSize = parseInt(req.query.page_size) || 10
+    const order = req.query.order === 'asc' ? 'asc' : 'desc'
+    const filterProjectId = req.query.project_id || null
+    const filterUserId = req.query.user_id || null
 
-    const whereClause = {
-      OR: [
-        { pending_action: { not: null } },
-        { status: 'AGUARDANDO_APROVACAO' },
-      ],
-      project: { archived: false },
-    }
-    if (project_id) whereClause.project_id = project_id
-    if (user_id) whereClause.created_by = user_id
-
-    const allPendingItems = await prisma.scopeItem.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        project_id: true,
-        title: true,
-        stage: true,
-        start_date: true,
-        end_date: true,
-        pending_title: true,
-        pending_start_date: true,
-        pending_end_date: true,
-        pending_action: true,
-        updated_at: true,
+    const pendingItems = await prisma.scopeItem.findMany({
+      where: {
+        OR: [
+          { status: 'AGUARDANDO_APROVACAO' },
+          { pending_action: { not: null } },
+        ],
         project: {
-          select: { id: true, title: true, area: true }
+          archived: false,
+          ...(filterProjectId ? { id: filterProjectId } : {}),
         },
-        created_by_user: {
-          select: { id: true, name: true }
-        },
+        ...(filterUserId ? { created_by: filterUserId } : {}),
       },
-      orderBy: { updated_at: order === 'asc' ? 'asc' : 'desc' },
+      include: {
+        project: { select: { id: true, title: true } },
+        creator: { select: { id: true, name: true } },
+      },
+      orderBy: { updated_at: order },
     })
 
-    const projectMap = {}
-    for (const item of allPendingItems) {
-      const pid = item.project_id
-      if (!projectMap[pid]) {
-        projectMap[pid] = {
+    const byProject = {}
+    for (const item of pendingItems) {
+      const pid = item.project.id
+      if (!byProject[pid]) {
+        byProject[pid] = {
           project_id: pid,
           project_title: item.project.title,
-          project_area: item.project.area,
-          submitted_by: item.created_by_user,
-          latest_updated_at: item.updated_at,
           items: [],
+          submitted_by: item.creator,
+          latest_updated_at: item.updated_at,
         }
       }
-      if (new Date(item.updated_at) > new Date(projectMap[pid].latest_updated_at)) {
-        projectMap[pid].latest_updated_at = item.updated_at
-        projectMap[pid].submitted_by = item.created_by_user
+      byProject[pid].items.push(item)
+      if (new Date(item.updated_at) > new Date(byProject[pid].latest_updated_at)) {
+        byProject[pid].latest_updated_at = item.updated_at
       }
-      projectMap[pid].items.push({
-        id: item.id,
-        stage: item.stage,
-        title: item.title,
-        pending_title: item.pending_title,
-        pending_action: item.pending_action,
-        start_date: item.start_date,
-        end_date: item.end_date,
-        pending_start_date: item.pending_start_date,
-        pending_end_date: item.pending_end_date,
-        updated_at: item.updated_at,
-        submitted_by: item.created_by_user,
-      })
     }
 
-    const projectsArray = Object.values(projectMap).sort((a, b) => {
-      if (order === 'asc') return new Date(a.latest_updated_at) - new Date(b.latest_updated_at)
-      return new Date(b.latest_updated_at) - new Date(a.latest_updated_at)
+    let projectGroups = Object.values(byProject)
+    projectGroups.sort((a, b) => {
+      const da = new Date(a.latest_updated_at).getTime()
+      const db = new Date(b.latest_updated_at).getTime()
+      return order === 'asc' ? da - db : db - da
     })
 
-    const total = projectsArray.length
-    const totalPages = Math.ceil(total / pageSizeNum)
-    const paginated = projectsArray.slice((pageNum - 1) * pageSizeNum, pageNum * pageSizeNum)
+    const total = projectGroups.length
+    const totalPages = Math.ceil(total / pageSize)
+    const start = (page - 1) * pageSize
+    const paged = projectGroups.slice(start, start + pageSize)
 
-    const filterProjects = [...new Map(
-      allPendingItems.map(i => [i.project_id, { id: i.project_id, title: i.project.title }])
-    ).values()]
-    const filterUsers = [...new Map(
-      allPendingItems.map(i => [i.created_by_user.id, { id: i.created_by_user.id, name: i.created_by_user.name }])
-    ).values()]
+    const allPending = await prisma.scopeItem.findMany({
+      where: {
+        OR: [
+          { status: 'AGUARDANDO_APROVACAO' },
+          { pending_action: { not: null } },
+        ],
+        project: { archived: false },
+      },
+      include: {
+        project: { select: { id: true, title: true } },
+        creator: { select: { id: true, name: true } },
+      },
+    })
+    const projectOptions = []
+    const userOptions = []
+    const seenProjects = new Set()
+    const seenUsers = new Set()
+    for (const item of allPending) {
+      if (!seenProjects.has(item.project.id)) {
+        seenProjects.add(item.project.id)
+        projectOptions.push({ id: item.project.id, title: item.project.title })
+      }
+      if (item.creator && !seenUsers.has(item.creator.id)) {
+        seenUsers.add(item.creator.id)
+        userOptions.push({ id: item.creator.id, name: item.creator.name })
+      }
+    }
 
     return res.status(200).json({
-      projects: paginated,
+      projects: paged,
       total,
-      page: pageNum,
-      page_size: pageSizeNum,
       total_pages: totalPages,
+      page,
       filter_options: {
-        projects: filterProjects,
-        users: filterUsers,
+        projects: projectOptions.sort((a, b) => a.title.localeCompare(b.title)),
+        users: userOptions.sort((a, b) => a.name.localeCompare(b.name)),
       },
     })
   } catch (err) {
     logger.error(err)
-    return res.status(500).json({ error: 'Erro ao carregar aprovações pendentes' })
+    return res.status(500).json({ error: 'Erro ao carregar aprovações' })
   }
 }
 
