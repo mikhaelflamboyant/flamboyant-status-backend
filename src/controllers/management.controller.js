@@ -375,7 +375,7 @@ const getPendingApprovals = async (req, res) => {
       },
       include: {
         project: { select: { id: true, title: true } },
-        creator: { select: { id: true, name: true } },
+        created_by_user: { select: { id: true, name: true } },
       },
       orderBy: { updated_at: order },
     })
@@ -388,7 +388,7 @@ const getPendingApprovals = async (req, res) => {
           project_id: pid,
           project_title: item.project.title,
           items: [],
-          submitted_by: item.creator,
+          submitted_by: item.created_by_user,
           latest_updated_at: item.updated_at,
         }
       }
@@ -420,7 +420,7 @@ const getPendingApprovals = async (req, res) => {
       },
       include: {
         project: { select: { id: true, title: true } },
-        creator: { select: { id: true, name: true } },
+        created_by_user: { select: { id: true, name: true } },
       },
     })
     const projectOptions = []
@@ -432,9 +432,9 @@ const getPendingApprovals = async (req, res) => {
         seenProjects.add(item.project.id)
         projectOptions.push({ id: item.project.id, title: item.project.title })
       }
-      if (item.creator && !seenUsers.has(item.creator.id)) {
-        seenUsers.add(item.creator.id)
-        userOptions.push({ id: item.creator.id, name: item.creator.name })
+      if (item.created_by_user && !seenUsers.has(item.created_by_user.id)) {
+        seenUsers.add(item.created_by_user.id)
+        userOptions.push({ id: item.created_by_user.id, name: item.created_by_user.name })
       }
     }
 
