@@ -167,15 +167,19 @@ const getPersonalDashboard = async (req, res) => {
 
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    const feed = await prisma.activityLog.findMany({
-      where: {
-        project_id: { in: projectIds },
-        created_at: { gte: sevenDaysAgo },
-      },
-      include: { user: { select: { id: true, name: true } } },
-      orderBy: { created_at: 'desc' },
-      take: 3,
-    })
+    const feedWhere = {
+      project_id: { in: projectIds },
+      created_at: { gte: sevenDaysAgo },
+    }
+    const [feed, feedCount] = await Promise.all([
+      prisma.activityLog.findMany({
+        where: feedWhere,
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { created_at: 'desc' },
+        take: 3,
+      }),
+      prisma.activityLog.count({ where: feedWhere }),
+    ])
 
     const goLiveCount = await prisma.project.count({
       where: { id: { in: projectIds }, go_live: { lte: tenDaysFromNow }, current_phase: { in: GO_LIVE_PHASES } },
@@ -183,6 +187,10 @@ const getPersonalDashboard = async (req, res) => {
     const statusPendingCount = projects.filter(p =>
       !p.status_updates[0]?.created_at ||
       new Date(p.status_updates[0].created_at) < weekStart
+    ).length
+    const statusCompletedCount = projects.filter(p =>
+      p.status_updates[0]?.created_at &&
+      new Date(p.status_updates[0].created_at) >= weekStart
     ).length
     const scopeCount = await prisma.scopeItem.count({
       where: {
@@ -213,10 +221,13 @@ const getPersonalDashboard = async (req, res) => {
       counts: {
         goLive: goLiveCount,
         statusReportsPending: statusPendingCount,
+        statusReportsCompleted: statusCompletedCount,
         scopeItems: scopeCount,
         tasks: taskCount,
+        feed: feedCount,
       },
     })
+
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao carregar painel pessoal' })
