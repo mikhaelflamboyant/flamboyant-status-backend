@@ -171,15 +171,19 @@ const getPersonalDashboard = async (req, res) => {
       project_id: { in: projectIds },
       created_at: { gte: sevenDaysAgo },
     }
-    const [feed, feedCount] = await Promise.all([
+    const [feedRaw, feedCount] = await Promise.all([
       prisma.activityLog.findMany({
         where: feedWhere,
-        include: { user: { select: { id: true, name: true } } },
+        include: {
+          user: { select: { id: true, name: true } },
+          project: { select: { id: true, title: true } },
+        },
         orderBy: { created_at: 'desc' },
         take: 3,
       }),
       prisma.activityLog.count({ where: feedWhere }),
     ])
+    const feed = feedRaw.map(l => ({ ...l, is_own: l.user_id === requester.id }))
 
     const goLiveCount = await prisma.project.count({
       where: { id: { in: projectIds }, go_live: { lte: tenDaysFromNow }, current_phase: { in: GO_LIVE_PHASES } },
