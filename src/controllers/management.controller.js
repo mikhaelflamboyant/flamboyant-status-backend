@@ -245,7 +245,7 @@ const getUsers = async (req, res) => {
               select: {
                 id: true, title: true, traffic_light: true,
                 current_phase: true, go_live: true, completion_pct: true,
-                archived: true
+                complexity: true, archived: true
               }
             }
           }
@@ -256,7 +256,7 @@ const getUsers = async (req, res) => {
               select: {
                 id: true, title: true, traffic_light: true,
                 current_phase: true, go_live: true, completion_pct: true,
-                archived: true
+                complexity: true, archived: true
               }
             }
           }
@@ -264,7 +264,7 @@ const getUsers = async (req, res) => {
       },
       orderBy: [{ area: 'asc' }, { name: 'asc' }]
     })
-
+    
     const usersWithProjects = users.map(user => {
       const projectsAsResponsavel = user.project_requests
         .filter(r => r.type === 'RESPONSAVEL')
