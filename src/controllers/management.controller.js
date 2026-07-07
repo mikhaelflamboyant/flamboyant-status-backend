@@ -24,7 +24,7 @@ const getDashboard = async (req, res) => {
           current_phase: { notIn: ['BACKLOG', 'SUPORTE'] }
         },
         select: {
-          id: true, title: true, area: true, traffic_light: true,
+          id: true, title: true, area: true, business_unit: true, traffic_light: true,
           current_phase: true, go_live: true, completion_pct: true, level: true,
           requested_at: true,
         },
@@ -44,7 +44,7 @@ const getDashboard = async (req, res) => {
       prisma.project.findMany({
         where: { current_phase: 'SUPORTE', archived: false, origin: 'NORMAL' },
         select: {
-          id: true, title: true, area: true, traffic_light: true,
+          id: true, title: true, area: true, business_unit: true, traffic_light: true,
           current_phase: true, go_live: true, requested_at: true,
         },
         orderBy: { created_at: 'desc' }
@@ -86,10 +86,8 @@ const getDashboard = async (req, res) => {
     }, {})
 
     const byUnit = allActiveForStats.reduce((acc, p) => {
-      const areas = (p.area || '').split(', ').filter(Boolean)
-      areas.forEach(area => {
-        acc[area] = (acc[area] || 0) + 1
-      })
+      const unit = p.business_unit || 'Não definida'
+      acc[unit] = (acc[unit] || 0) + 1
       return acc
     }, {})
 
@@ -146,7 +144,7 @@ const getDashboard = async (req, res) => {
 
     const deliveredProjects = await prisma.project.findMany({
       where: { archived: true, origin: 'NORMAL', current_phase: { not: 'CANCELADO' }, archived_at: { not: null } },
-      select: { area: true, created_at: true, archived_at: true }
+      select: { business_unit: true, created_at: true, archived_at: true }
     })
 
     const deliveryByUnit = {}
@@ -158,12 +156,10 @@ const getDashboard = async (req, res) => {
       if (days < 0) continue
       globalDeliverySum += days
       globalDeliveryCount++
-      const areas = (p.area || '').split(', ').filter(Boolean)
-      areas.forEach(area => {
-        if (!deliveryByUnit[area]) deliveryByUnit[area] = { sum: 0, count: 0 }
-        deliveryByUnit[area].sum += days
-        deliveryByUnit[area].count++
-      })
+      const unit = p.business_unit || 'Não definida'
+      if (!deliveryByUnit[unit]) deliveryByUnit[unit] = { sum: 0, count: 0 }
+      deliveryByUnit[unit].sum += days
+      deliveryByUnit[unit].count++
     }
     const avgDeliveryByUnit = {}
     for (const [area, { sum, count }] of Object.entries(deliveryByUnit)) {
