@@ -93,7 +93,7 @@ const getPersonalDashboard = async (req, res) => {
     const tenDaysFromNow = new Date(now)
     tenDaysFromNow.setDate(now.getDate() + 10)
 
-    const goLiveProjects = await prisma.project.findMany({
+    const goLiveAll = await prisma.project.findMany({
       where: {
         id: { in: projectIds },
         go_live: { lte: tenDaysFromNow },
@@ -101,8 +101,8 @@ const getPersonalDashboard = async (req, res) => {
       },
       select: { id: true, title: true, go_live: true, current_phase: true },
       orderBy: { go_live: 'asc' },
-      take: 3,
     })
+    const goLiveProjects = goLiveAll.slice(0, 3)
 
     const projects = await prisma.project.findMany({
       where: { id: { in: projectIds }, current_phase: { in: EXECUTION_PHASES } },
@@ -115,7 +115,7 @@ const getPersonalDashboard = async (req, res) => {
         },
       },
     })
-    const statusReports = projects
+    const statusReportsAll = projects
       .map(p => ({
         project_id: p.id,
         project_title: p.title,
@@ -129,9 +129,9 @@ const getPersonalDashboard = async (req, res) => {
         const order = { vermelho: 0, amarelo: 1, verde: 2 }
         return order[a.tag] - order[b.tag]
       })
-      .slice(0, 3)
+    const statusReports = statusReportsAll.slice(0, 3)
 
-    const scopeItems = await prisma.scopeItem.findMany({
+    const scopeItemsAll = await prisma.scopeItem.findMany({
       where: {
         project_id: { in: projectIds },
         end_date: { lte: weekEnd },
@@ -144,10 +144,10 @@ const getPersonalDashboard = async (req, res) => {
         project: { select: { id: true, title: true } },
       },
       orderBy: { end_date: 'asc' },
-      take: 3,
     })
+    const scopeItems = scopeItemsAll.slice(0, 3)
 
-    const tasks = await prisma.task.findMany({
+    const tasksAll = await prisma.task.findMany({
       where: {
         project_id: { in: projectIds },
         end_date: { lte: weekEnd },
@@ -162,8 +162,8 @@ const getPersonalDashboard = async (req, res) => {
         project: { select: { id: true, title: true } },
       },
       orderBy: { end_date: 'asc' },
-      take: 3,
     })
+    const tasks = tasksAll.slice(0, 3)
 
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
@@ -185,9 +185,7 @@ const getPersonalDashboard = async (req, res) => {
     ])
     const feed = feedRaw.map(l => ({ ...l, is_own: l.user_id === requester.id }))
 
-    const goLiveCount = await prisma.project.count({
-      where: { id: { in: projectIds }, go_live: { lte: tenDaysFromNow }, current_phase: { in: GO_LIVE_PHASES } },
-    })
+    const goLiveCount = goLiveAll.length
     const statusPendingCount = projects.filter(p =>
       !p.status_updates[0]?.created_at ||
       new Date(p.status_updates[0].created_at) < weekStart
@@ -196,31 +194,18 @@ const getPersonalDashboard = async (req, res) => {
       p.status_updates[0]?.created_at &&
       new Date(p.status_updates[0].created_at) >= weekStart
     ).length
-    const scopeCount = await prisma.scopeItem.count({
-      where: {
-        project_id: { in: projectIds },
-        end_date: { lte: weekEnd },
-        status: 'APROVADO',
-        completion_date: null,
-      },
-    })
-    const taskCount = await prisma.task.count({
-      where: {
-        project_id: { in: projectIds },
-        end_date: { lte: weekEnd },
-        completed: false,
-        OR: [
-          { assignee_id: requester.id },
-          { assignees: { some: { user_id: requester.id } } },
-        ],
-      },
-    })
+    const scopeCount = scopeItemsAll.length
+    const taskCount = tasksAll.length
 
     return res.status(200).json({
       goLive: goLiveProjects,
+      goLiveAll,
       statusReports,
+      statusReportsAll,
       scopeItems,
+      scopeItemsAll,
       tasks,
+      tasksAll,
       feed,
       counts: {
         goLive: goLiveCount,
