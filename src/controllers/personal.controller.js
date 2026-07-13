@@ -165,7 +165,40 @@ const getPersonalDashboard = async (req, res) => {
     })
     const tasks = tasksAll.slice(0, 3)
 
+    const scopeItemsDoneWeek = await prisma.scopeItem.findMany({
+      where: {
+        project_id: { in: projectIds },
+        end_date: { lte: weekEnd },
+        status: 'APROVADO',
+        completion_date: { not: null },
+      },
+      select: {
+        id: true, title: true, end_date: true, completion_date: true,
+        completion_pct: true, stage: true,
+        project: { select: { id: true, title: true } },
+      },
+      orderBy: { end_date: 'asc' },
+    })
+
+    const tasksDoneWeek = await prisma.task.findMany({
+      where: {
+        project_id: { in: projectIds },
+        end_date: { lte: weekEnd },
+        completed: true,
+        OR: [
+          { assignee_id: requester.id },
+          { assignees: { some: { user_id: requester.id } } },
+        ],
+      },
+      select: {
+        id: true, title: true, end_date: true, completed: true,
+        project: { select: { id: true, title: true } },
+      },
+      orderBy: { end_date: 'asc' },
+    })
+
     const sevenDaysAgo = new Date()
+
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     const feedWhere = {
       project_id: { in: projectIds },
@@ -204,8 +237,10 @@ const getPersonalDashboard = async (req, res) => {
       statusReportsAll,
       scopeItems,
       scopeItemsAll,
+      scopeItemsDoneWeek,
       tasks,
       tasksAll,
+      tasksDoneWeek,
       feed,
       counts: {
         goLive: goLiveCount,
