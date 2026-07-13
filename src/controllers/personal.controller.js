@@ -159,6 +159,7 @@ const getPersonalDashboard = async (req, res) => {
       },
       select: {
         id: true, title: true, end_date: true, completed: true,
+        scope_item: { select: { id: true, title: true } },
         project: { select: { id: true, title: true } },
       },
       orderBy: { end_date: 'asc' },
