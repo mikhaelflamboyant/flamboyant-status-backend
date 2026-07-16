@@ -7,6 +7,7 @@ const ROLES = {
   DIRETOR: 'DIRETOR',
   SUPERVISOR: 'SUPERVISOR',
   ANALISTA: 'ANALISTA',
+  ESTAGIARIO: 'ESTAGIARIO',
 }
 
 const TI_AREA = 'Tecnologia da Informação'
