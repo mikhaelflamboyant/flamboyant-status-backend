@@ -2,6 +2,34 @@ const prisma = require('../lib/prisma')
 const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
 const logger = require('../lib/logger')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
+
+const TI_AREA = 'Tecnologia da Informação'
+const FULL_VIEW_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
+const AREA_MANAGER_ROLES = ['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR']
+
+async function visibilityFilter(requester) {
+  const isFromTI = requester.area === TI_AREA
+
+  if (FULL_VIEW_ROLES.includes(requester.role) && isFromTI) {
+    return {}
+  }
+
+  if (isFromTI) {
+    return { requesters: { some: { user_id: requester.id, type: 'RESPONSAVEL' } } }
+  }
+
+  if (AREA_MANAGER_ROLES.includes(requester.role)) {
+    const user = await prisma.user.findUnique({ where: { id: requester.id } })
+    return { area: { contains: user.area } }
+  }
+
+  return {
+    OR: [
+      { requesters: { some: { user_id: requester.id } } },
+      { members: { some: { user_id: requester.id } } },
+    ],
+  }
+}
 const closeFreshserviceTicket = async (ticketId, tipo = 'aprovado') => {
   if (!ticketId || !process.env.FRESHSERVICE_DOMAIN || !process.env.FRESHSERVICE_API_KEY) return
   try {
@@ -26,28 +54,13 @@ const closeFreshserviceTicket = async (ticketId, tipo = 'aprovado') => {
 const listProjects = async (req, res) => {
   try {
     const requester = req.user
-    const TI_AREA = 'Tecnologia da Informação'
-    const isFromTI = requester.area === TI_AREA
+    const visibility = await visibilityFilter(requester)
 
-    let whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] } }
-
-    if (requester.role === 'ANALISTA_MASTER' || requester.role === 'ANALISTA_TESTADOR') {
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] } }
-    } else if ((requester.role === 'GERENTE' || requester.role === 'COORDENADOR') && isFromTI) {
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] } }
-    } else if (['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR'].includes(requester.role)) {
-      const user = await prisma.user.findUnique({ where: { id: requester.id } })
-      whereClause = { archived: false, origin: 'NORMAL', current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] }, area: { contains: user.area } }
-    } else {
-      whereClause = {
-        archived: false,
-        origin: 'NORMAL',
-        current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] },
-        OR: [
-          { requesters: { some: { user_id: requester.id } } },
-          { members: { some: { user_id: requester.id } } },
-        ]
-      }
+    let whereClause = {
+      archived: false,
+      origin: 'NORMAL',
+      current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE'] },
+      ...visibility,
     }
 
     const { filtro } = req.query
@@ -101,8 +114,10 @@ const listProjects = async (req, res) => {
 
 const listGoLiveProjects = async (req, res) => {
   try {
+    const requester = req.user
+    const visibility = await visibilityFilter(requester)
     const { filtro } = req.query
-    let whereClause = { current_phase: 'SUPORTE', archived: false, origin: 'NORMAL' }
+    let whereClause = { current_phase: 'SUPORTE', archived: false, origin: 'NORMAL', ...visibility }
 
     if (filtro === 'sem_cronograma') {
       const comCronograma = await prisma.scopeItem.findMany({
@@ -132,28 +147,9 @@ const listGoLiveProjects = async (req, res) => {
 const listArchivedProjects = async (req, res) => {
   try {
     const requester = req.user
-    const TI_AREA = 'Tecnologia da Informação'
-    const isFromTI = requester.area === TI_AREA
-    const PRIVILEGED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
-    const MANAGER_ROLES = ['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR']
+    const visibility = await visibilityFilter(requester)
 
-    let whereClause = { archived: true, current_phase: { not: 'CANCELADO' } }
-
-    if (PRIVILEGED_ROLES.includes(requester.role) && isFromTI) {
-      whereClause = { archived: true, current_phase: { not: 'CANCELADO' } }
-    } else if (MANAGER_ROLES.includes(requester.role)) {
-      const user = await prisma.user.findUnique({ where: { id: requester.id } })
-      whereClause = { archived: true, current_phase: { not: 'CANCELADO' }, area: { contains: user.area } }
-    } else {
-      whereClause = {
-        archived: true,
-        current_phase: { not: 'CANCELADO' },
-        OR: [
-          { requesters: { some: { user_id: requester.id } } },
-          { members: { some: { user_id: requester.id } } }
-        ]
-      }
-    }
+    let whereClause = { archived: true, current_phase: { not: 'CANCELADO' }, ...visibility }
 
     const { filtro } = req.query
 
@@ -809,13 +805,9 @@ const assignResponsible = async (req, res) => {
     const requester = req.user
 
     const TI_AREA = 'Tecnologia da Informação'
-    const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
-    if (!isFromTI) return res.status(403).json({ error: 'Sem permissão' })
-
-    const canAssignOthers = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
-    if (!canAssignOthers && user_id !== requester.id) {
-      return res.status(403).json({ error: 'Você só pode se vincular a si mesmo' })
-    }
+    const ASSIGN_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
+    const canAssign = requester.area === TI_AREA && ASSIGN_ROLES.includes(requester.role)
+    if (!canAssign) return res.status(403).json({ error: 'Sem permissão para atribuir responsáveis' })
 
     const project = await prisma.project.findUnique({ where: { id } })
     if (!project) return res.status(404).json({ error: 'Projeto não encontrado' })
@@ -1017,8 +1009,10 @@ const cancelProject = async (req, res) => {
 
 const listCancelledProjects = async (req, res) => {
   try {
+    const requester = req.user
+    const visibility = await visibilityFilter(requester)
     const { filtro } = req.query
-    let whereClause = { current_phase: 'CANCELADO', archived: true }
+    let whereClause = { current_phase: 'CANCELADO', archived: true, ...visibility }
 
     if (filtro === 'sem_cronograma') {
       const comCronograma = await prisma.scopeItem.findMany({
