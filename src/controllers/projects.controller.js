@@ -30,6 +30,42 @@ async function visibilityFilter(requester) {
     ],
   }
 }
+async function ensureCoordenadorTI({ project_id, responsible_ids = [], creatorRole }) {
+  let needsCoordenador = creatorRole === 'ESTAGIARIO'
+
+  if (!needsCoordenador && responsible_ids.length > 0) {
+    const responsibles = await prisma.user.findMany({
+      where: { id: { in: responsible_ids } },
+      select: { role: true },
+    })
+    needsCoordenador = responsibles.some(u => u.role === 'ESTAGIARIO')
+  }
+
+  if (!needsCoordenador) return
+
+  const jaTemCoordenador = await prisma.projectRequester.findFirst({
+    where: {
+      project_id,
+      type: 'RESPONSAVEL',
+      user: { role: 'COORDENADOR', area: TI_AREA, status: 'ATIVO' },
+    },
+  })
+  if (jaTemCoordenador) return
+
+  const coordenador = await prisma.user.findFirst({
+    where: { role: 'COORDENADOR', area: TI_AREA, status: 'ATIVO' },
+    orderBy: { created_at: 'asc' },
+  })
+  if (!coordenador) {
+    logger.warn(`Nenhum coordenador de TI ativo encontrado para vincular ao projeto ${project_id}`)
+    return
+  }
+
+  await prisma.projectRequester.create({
+    data: { project_id, user_id: coordenador.id, type: 'RESPONSAVEL' },
+  })
+}
+
 const closeFreshserviceTicket = async (ticketId, tipo = 'aprovado') => {
   if (!ticketId || !process.env.FRESHSERVICE_DOMAIN || !process.env.FRESHSERVICE_API_KEY) return
   try {
@@ -299,6 +335,12 @@ const createProject = async (req, res) => {
       }
     }
 
+    await ensureCoordenadorTI({
+      project_id: project.id,
+      responsible_ids: responsible_ids || [],
+      creatorRole: requester.role,
+    })
+
     if (member_ids?.length > 0) {
       for (const user_id of member_ids) {
         await prisma.projectMember.create({ data: { project: { connect: { id: project.id } }, user: { connect: { id: user_id } } } })
@@ -508,6 +550,8 @@ const updateProject = async (req, res) => {
       for (const person of (responsible_names || [])) {
         await prisma.projectRequester.create({ data: { project: { connect: { id } }, manual_name: person.name, manual_area: person.area, type: 'RESPONSAVEL' } })
       }
+
+      await ensureCoordenadorTI({ project_id: id, responsible_ids: responsible_ids || [] })
 
       if (requester_ids?.length > 0 || responsible_ids?.length > 0) {
         const firstResponsible = (responsible_ids || [])[0] || null
@@ -826,6 +870,8 @@ const assignResponsible = async (req, res) => {
         data: { project_id: id, manual_name: responsible_name, manual_area: responsible_area || '', type: 'RESPONSAVEL' }
       })
     }
+
+    await ensureCoordenadorTI({ project_id: id, responsible_ids: user_id ? [user_id] : [] })
 
     const dataToUpdate = {
       current_phase: 'RECEBIDA',
