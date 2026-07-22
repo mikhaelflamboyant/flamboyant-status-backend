@@ -71,19 +71,25 @@ const closeFreshserviceTicket = async (ticketId, tipo = 'aprovado') => {
   try {
     const numericId = String(ticketId).replace(/^SR-/i, '')
     const credentials = Buffer.from(`${process.env.FRESHSERVICE_API_KEY}:X`).toString('base64')
-    const url = `https://${process.env.FRESHSERVICE_DOMAIN}/api/v2/tickets/${numericId}/notes`
-    const gatilho = tipo === 'rejeitado' ? '[STATUS_REPORT_REJEITADO]' : '[STATUS_REPORT_APROVADO]'
+    const url = `https://${process.env.FRESHSERVICE_DOMAIN}/api/v2/tickets/${numericId}?bypass_mandatory=true`
+
     const response = await fetch(url, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Basic ${credentials}`,
       },
-      body: JSON.stringify({ body: gatilho, private: true }),
+      body: JSON.stringify({ status: 5 }),
     })
-    console.log('FreshService nota status:', response.status)
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      logger.error({ ticketId: numericId, status: response.status, body: errorBody }, 'Falha ao fechar ticket no FreshService')
+    } else {
+      logger.info({ ticketId: numericId, tipo }, 'Ticket fechado no FreshService')
+    }
   } catch (err) {
-    logger.error({ err }, 'Erro ao notificar ticket no FreshService')
+    logger.error({ err }, 'Erro ao fechar ticket no FreshService')
   }
 }
 
