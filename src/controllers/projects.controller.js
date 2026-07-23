@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma')
 const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
 const logger = require('../lib/logger')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
+const { visibilityWhere, canApprove } = require('../services/approvals.service')
 
 const TI_AREA = 'Tecnologia da Informação'
 const FULL_VIEW_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
@@ -233,6 +234,8 @@ const listArchivedProjects = async (req, res) => {
 const getProjectById = async (req, res) => {
   try {
     const { id } = req.params
+    const requester = req.user
+    const readVisibility = visibilityWhere(requester)
 
     const project = await prisma.project.findUnique({
       where: { id },
@@ -241,10 +244,12 @@ const getProjectById = async (req, res) => {
         owner: { select: { id: true, name: true, email: true } },
         members: { include: { user: { select: { id: true, name: true, email: true } } } },
         status_updates: {
+          where: readVisibility,
           orderBy: { created_at: 'desc' },
           include: { risks: true, author: { select: { id: true, name: true } } }
         },
         requirements: {
+          where: readVisibility,
           include: {
             author: { select: { id: true, name: true } },
             history: {

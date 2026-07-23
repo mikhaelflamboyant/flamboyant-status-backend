@@ -4,6 +4,7 @@ const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 const { syncMentions } = require('../services/mentions.service')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
+const { needsApproval, canApprove, visibilityWhere } = require('../services/approvals.service')
 
 const TI_AREA = 'Tecnologia da Informação'
 const canMention = (requester, project) => {
@@ -18,6 +19,7 @@ const canMention = (requester, project) => {
 const getRequirement = async (req, res) => {
   try {
     const { project_id } = req.params
+    const requester = req.user
 
     const project = await prisma.project.findUnique({ where: { id: project_id } })
     if (!project) {
@@ -25,7 +27,7 @@ const getRequirement = async (req, res) => {
     }
 
     const requirement = await prisma.requirement.findFirst({
-      where: { project_id },
+      where: { project_id, ...visibilityWhere(requester) },
       include: {
         author: { select: { id: true, name: true } },
         history: {
@@ -81,14 +83,16 @@ const createRequirement = async (req, res) => {
       return res.status(400).json({ error: 'Requisitos já cadastrados. Use o método PATCH para atualizar.' })
     }
 
+    const status = needsApproval(requester) ? 'AGUARDANDO_APROVACAO' : 'APROVADO'
+
     const requirement = await prisma.requirement.create({
-      data: { project_id, author_id: requester.id, content },
+      data: { project_id, author_id: requester.id, content, status },
       include: { author: { select: { id: true, name: true } } }
     })
     await touchProject(project_id)
 
     let mentionResult = { invalidUserIds: [] }
-    if (canMention(requester, project)) {
+    if (status === 'APROVADO' && canMention(requester, project)) {
       mentionResult = await syncMentions({
         source_type: 'REQUIREMENT',
         source_id: requirement.id,
@@ -147,6 +151,38 @@ const updateRequirement = async (req, res) => {
       return res.status(404).json({ error: 'Requisitos não encontrados para este projeto' })
     }
 
+    if (needsApproval(requester) && requirement.status === 'APROVADO') {
+      const pendingUpdate = await prisma.requirement.update({
+        where: { id: requirement.id },
+        data: { status: 'AGUARDANDO_APROVACAO', pending_action: 'EDITAR', pending_data: { content } },
+        include: {
+          author: { select: { id: true, name: true } },
+          history: {
+            orderBy: { edited_at: 'desc' },
+            include: { editor: { select: { id: true, name: true } } }
+          }
+        }
+      })
+      await touchProject(project_id)
+      return res.status(200).json(pendingUpdate)
+    }
+
+    if (needsApproval(requester) && requirement.status === 'AGUARDANDO_APROVACAO') {
+      const pendingUpdate = await prisma.requirement.update({
+        where: { id: requirement.id },
+        data: { content },
+        include: {
+          author: { select: { id: true, name: true } },
+          history: {
+            orderBy: { edited_at: 'desc' },
+            include: { editor: { select: { id: true, name: true } } }
+          }
+        }
+      })
+      await touchProject(project_id)
+      return res.status(200).json(pendingUpdate)
+    }
+
     await prisma.requirementHistory.create({
       data: {
         requirement_id: requirement.id,
@@ -157,7 +193,7 @@ const updateRequirement = async (req, res) => {
 
     const updated = await prisma.requirement.update({
       where: { id: requirement.id },
-      data: { content },
+      data: { content, status: 'APROVADO', pending_action: null, pending_data: null },
       include: {
         author: { select: { id: true, name: true } },
         history: {
@@ -193,4 +229,86 @@ const updateRequirement = async (req, res) => {
   }
 }
 
-module.exports = { getRequirement, createRequirement, updateRequirement }
+const approveRequirement = async (req, res) => {
+  try {
+    const { project_id } = req.params
+    const requester = req.user
+
+    if (!canApprove(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para aprovar requisitos' })
+    }
+
+    const requirement = await prisma.requirement.findFirst({ where: { project_id } })
+    if (!requirement || requirement.status !== 'AGUARDANDO_APROVACAO') {
+      return res.status(400).json({ error: 'Não há requisitos pendentes de aprovação' })
+    }
+
+    if (requirement.pending_action === 'EDITAR') {
+      await prisma.requirementHistory.create({
+        data: {
+          requirement_id: requirement.id,
+          editor_id: requirement.author_id,
+          content_snapshot: requirement.content
+        }
+      })
+      await prisma.requirement.update({
+        where: { id: requirement.id },
+        data: {
+          content: requirement.pending_data.content,
+          status: 'APROVADO',
+          pending_action: null,
+          pending_data: null,
+        }
+      })
+    } else {
+      await prisma.requirement.update({
+        where: { id: requirement.id },
+        data: { status: 'APROVADO', pending_action: null }
+      })
+    }
+
+    await logActivity({
+      project_id,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.REQUIREMENT_UPDATED,
+      description: `${requester.name} aprovou os requisitos do projeto.`,
+    })
+
+    return res.status(200).json({ message: 'Requisitos aprovados com sucesso' })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao aprovar requisitos' })
+  }
+}
+
+const rejectRequirement = async (req, res) => {
+  try {
+    const { project_id } = req.params
+    const requester = req.user
+
+    if (!canApprove(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para rejeitar requisitos' })
+    }
+
+    const requirement = await prisma.requirement.findFirst({ where: { project_id } })
+    if (!requirement || requirement.status !== 'AGUARDANDO_APROVACAO') {
+      return res.status(400).json({ error: 'Não há requisitos pendentes de aprovação' })
+    }
+
+    if (requirement.pending_action === 'EDITAR') {
+      await prisma.requirement.update({
+        where: { id: requirement.id },
+        data: { status: 'APROVADO', pending_action: null, pending_data: null }
+      })
+    } else {
+      await prisma.requirement.delete({ where: { id: requirement.id } })
+    }
+
+    return res.status(200).json({ message: 'Requisitos rejeitados' })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao rejeitar requisitos' })
+  }
+}
+
+module.exports = { getRequirement, createRequirement, updateRequirement, approveRequirement, rejectRequirement }

@@ -142,6 +142,9 @@ model StatusUpdate {
   description      String
   highlights       String   @default("")
   next_steps       String   @default("")
+  status           String   @default("APROVADO")
+  pending_action   String?
+  pending_data     Json?
   created_at       DateTime @default(now())
 
   project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
@@ -160,12 +163,15 @@ model Risk {
 }
 
 model Requirement {
-  id         String   @id @default(uuid())
-  project_id String
-  author_id  String
-  content    String
-  updated_at DateTime @updatedAt
-  created_at DateTime @default(now())
+  id             String   @id @default(uuid())
+  project_id     String
+  author_id      String
+  content        String
+  status         String   @default("APROVADO")
+  pending_action String?
+  pending_data   Json?
+  updated_at     DateTime @updatedAt
+  created_at     DateTime @default(now())
 
   project Project            @relation(fields: [project_id], references: [id], onDelete: Cascade)
   author  User               @relation(fields: [author_id], references: [id])
@@ -184,18 +190,21 @@ model RequirementHistory {
 }
 
 model Task {
-  id          String    @id @default(uuid())
-  project_id  String
-  author_id   String
-  assignee_id String?
-  title       String
-  description String?
-  phase       String?
-  due_date    DateTime?
-  start_date  DateTime?
-  end_date    DateTime?
-  completed   Boolean   @default(false)
-  created_at  DateTime  @default(now())
+  id             String    @id @default(uuid())
+  project_id     String
+  author_id      String
+  assignee_id    String?
+  title          String
+  description    String?
+  phase          String?
+  due_date       DateTime?
+  start_date     DateTime?
+  end_date       DateTime?
+  completed      Boolean   @default(false)
+  status         String    @default("APROVADO")
+  pending_action String?
+  pending_data   Json?
+  created_at     DateTime  @default(now())
   date_history   TaskDateHistory[]
   scope_item_id  String?
   scope_item     ScopeItem? @relation(fields: [scope_item_id], references: [id])

@@ -8,6 +8,7 @@ const APPROVER_ROLES = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_T
 
 const { syncMentions } = require('../services/mentions.service')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
+const { needsApproval } = require('../services/approvals.service')
 
 const canMention = (requester, project) => {
   const isFromTI = requester.area === TI_AREA ||
@@ -42,7 +43,13 @@ const listScopeItems = async (req, res) => {
       ]
     })
 
-    const result = items.map(item => {
+    const visibleItems = items.filter(item => {
+      const isPureCreationPending = item.status === 'AGUARDANDO_APROVACAO' && !item.pending_action
+      if (!isPureCreationPending) return true
+      return item.created_by === requester.id || canApprove(requester)
+    })
+
+    const result = visibleItems.map(item => {
       const hasPending = item.pending_action !== null
       const isOwner = item.created_by === requester.id
 
@@ -111,7 +118,7 @@ const createScopeItem = async (req, res) => {
         end_date: end_date ? new Date(end_date) : null,
         completion_pct: completion_pct || 0,
         completion_date: completion_date ? new Date(completion_date) : null,
-        status: 'RASCUNHO',
+        status: needsApproval(requester) ? 'AGUARDANDO_APROVACAO' : 'RASCUNHO',
         created_by: requester.id,
       },
       include: {

@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma')
 const logger = require('../lib/logger')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
+const { needsApproval, canApprove, visibilityWhere } = require('../services/approvals.service')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
@@ -45,7 +46,7 @@ const listTasks = async (req, res) => {
     }
 
     const tasks = await prisma.task.findMany({
-      where: { project_id },
+      where: { project_id, ...visibilityWhere(requester) },
       include: {
         author: { select: { id: true, name: true } },
         assignee: { select: { id: true, name: true } },
@@ -80,6 +81,8 @@ const createTask = async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para criar tarefas' })
     }
 
+    const status = needsApproval(requester) ? 'AGUARDANDO_APROVACAO' : 'APROVADO'
+
     const task = await prisma.task.create({
       data: {
         project_id,
@@ -92,6 +95,7 @@ const createTask = async (req, res) => {
         start_date: start_date ? new Date(start_date) : null,
         end_date: end_date ? new Date(end_date) : null,
         scope_item_id: scope_item_id || null,
+        status,
       },
       include: {
         author: { select: { id: true, name: true } },
@@ -176,6 +180,28 @@ const updateTask = async (req, res) => {
 
     const originalTask = await prisma.task.findUnique({ where: { id } })
 
+    if (needsApproval(requester) && originalTask.status === 'APROVADO') {
+      const pendingData = {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(assignee_id !== undefined && { assignee_id }),
+        ...(phase !== undefined && { phase }),
+        ...(due_date !== undefined && { due_date }),
+        ...(start_date !== undefined && { start_date }),
+        ...(end_date !== undefined && { end_date }),
+      }
+      const pendingUpdate = await prisma.task.update({
+        where: { id },
+        data: { status: 'AGUARDANDO_APROVACAO', pending_action: 'EDITAR', pending_data: pendingData },
+        include: {
+          author: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true } }
+        }
+      })
+      await touchProject(task.project_id)
+      return res.status(200).json(pendingUpdate)
+    }
+
     const updated = await prisma.task.update({
       where: { id },
       data: {
@@ -186,6 +212,7 @@ const updateTask = async (req, res) => {
         ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
         ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
         ...(end_date !== undefined && { end_date: end_date ? new Date(end_date) : null }),
+        ...(needsApproval(requester) && { status: 'APROVADO', pending_action: null, pending_data: null }),
       },
       include: {
         author: { select: { id: true, name: true } },
@@ -303,4 +330,71 @@ const deleteTask = async (req, res) => {
   }
 }
 
-module.exports = { listTasks, createTask, updateTask, completeTask, deleteTask }
+const approveTask = async (req, res) => {
+  try {
+    const { id } = req.params
+    const requester = req.user
+    if (!canApprove(requester)) return res.status(403).json({ error: 'Sem permissão para aprovar tarefas' })
+
+    const task = await prisma.task.findUnique({ where: { id } })
+    if (!task || task.status !== 'AGUARDANDO_APROVACAO') {
+      return res.status(400).json({ error: 'Esta tarefa não está pendente de aprovação' })
+    }
+
+    if (task.pending_action === 'EDITAR') {
+      const d = task.pending_data || {}
+      await prisma.task.update({
+        where: { id },
+        data: {
+          ...(d.title !== undefined && { title: d.title }),
+          ...(d.description !== undefined && { description: d.description }),
+          ...(d.assignee_id !== undefined && { assignee_id: d.assignee_id }),
+          ...(d.phase !== undefined && { phase: d.phase }),
+          ...(d.due_date !== undefined && { due_date: d.due_date ? new Date(d.due_date) : null }),
+          ...(d.start_date !== undefined && { start_date: d.start_date ? new Date(d.start_date) : null }),
+          ...(d.end_date !== undefined && { end_date: d.end_date ? new Date(d.end_date) : null }),
+          status: 'APROVADO', pending_action: null, pending_data: null,
+        }
+      })
+    } else {
+      await prisma.task.update({ where: { id }, data: { status: 'APROVADO' } })
+    }
+
+    await logActivity({
+      project_id: task.project_id, user_id: requester.id,
+      action_type: ACTION_TYPES.TASK_UPDATED,
+      description: `${requester.name} aprovou a tarefa "${task.title}".`,
+    })
+
+    return res.status(200).json({ message: 'Tarefa aprovada com sucesso' })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao aprovar tarefa' })
+  }
+}
+
+const rejectTask = async (req, res) => {
+  try {
+    const { id } = req.params
+    const requester = req.user
+    if (!canApprove(requester)) return res.status(403).json({ error: 'Sem permissão para rejeitar tarefas' })
+
+    const task = await prisma.task.findUnique({ where: { id } })
+    if (!task || task.status !== 'AGUARDANDO_APROVACAO') {
+      return res.status(400).json({ error: 'Esta tarefa não está pendente de aprovação' })
+    }
+
+    if (task.pending_action === 'EDITAR') {
+      await prisma.task.update({ where: { id }, data: { status: 'APROVADO', pending_action: null, pending_data: null } })
+    } else {
+      await prisma.task.delete({ where: { id } })
+    }
+
+    return res.status(200).json({ message: 'Tarefa rejeitada' })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao rejeitar tarefa' })
+  }
+}
+
+module.exports = { listTasks, createTask, updateTask, completeTask, deleteTask, approveTask, rejectTask }
