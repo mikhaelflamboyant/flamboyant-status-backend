@@ -185,6 +185,21 @@ const updateStatusUpdate = async (req, res) => {
       return res.status(200).json(pendingUpdate)
     }
 
+    if (needsApproval(requester) && update.status === 'AGUARDANDO_APROVACAO') {
+      const pendingUpdate = await prisma.statusUpdate.update({
+        where: { id },
+        data: {
+          ...(description !== undefined && { description }),
+          ...(highlights !== undefined && { highlights }),
+          ...(next_steps !== undefined && { next_steps }),
+          ...(reported_by_name !== undefined && { reported_by_name }),
+        },
+        include: { author: { select: { id: true, name: true } }, risks: true }
+      })
+      await touchProject(update.project_id)
+      return res.status(200).json(pendingUpdate)
+    }
+
     const updated = await prisma.statusUpdate.update({
       where: { id },
       data: {
@@ -192,7 +207,6 @@ const updateStatusUpdate = async (req, res) => {
         ...(highlights !== undefined && { highlights }),
         ...(next_steps !== undefined && { next_steps }),
         ...(reported_by_name !== undefined && { reported_by_name }),
-        ...(needsApproval(requester) && { status: 'APROVADO', pending_action: null, pending_data: null }),
       },
       include: {
         author: { select: { id: true, name: true } },

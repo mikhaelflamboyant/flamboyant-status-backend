@@ -203,6 +203,27 @@ const updateTask = async (req, res) => {
       return res.status(200).json(pendingUpdate)
     }
 
+    if (needsApproval(requester) && originalTask.status === 'AGUARDANDO_APROVACAO') {
+      const pendingUpdate = await prisma.task.update({
+        where: { id },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(description !== undefined && { description }),
+          ...(assignee_id !== undefined && { assignee_id }),
+          ...(phase !== undefined && { phase }),
+          ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
+          ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
+          ...(end_date !== undefined && { end_date: end_date ? new Date(end_date) : null }),
+        },
+        include: {
+          author: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true } }
+        }
+      })
+      await touchProject(task.project_id)
+      return res.status(200).json(pendingUpdate)
+    }
+
     const updated = await prisma.task.update({
       where: { id },
       data: {
@@ -213,7 +234,6 @@ const updateTask = async (req, res) => {
         ...(due_date !== undefined && { due_date: due_date ? new Date(due_date) : null }),
         ...(start_date !== undefined && { start_date: start_date ? new Date(start_date) : null }),
         ...(end_date !== undefined && { end_date: end_date ? new Date(end_date) : null }),
-        ...(needsApproval(requester) && { status: 'APROVADO', pending_action: null, pending_data: null }),
       },
       include: {
         author: { select: { id: true, name: true } },
@@ -283,6 +303,19 @@ const completeTask = async (req, res) => {
 
     if (!isAuthor && !isAssignee) {
       return res.status(403).json({ error: 'Apenas o autor ou um responsável pela tarefa pode concluí-la' })
+    }
+
+    if (needsApproval(requester) && task.status === 'APROVADO' && !task.completed) {
+      const pendingUpdate = await prisma.task.update({
+        where: { id },
+        data: { status: 'AGUARDANDO_APROVACAO', pending_action: 'CONCLUIR', pending_data: { completed: true } },
+        include: {
+          author: { select: { id: true, name: true } },
+          assignee: { select: { id: true, name: true } }
+        }
+      })
+      await touchProject(task.project_id)
+      return res.status(200).json(pendingUpdate)
     }
 
     const updated = await prisma.task.update({
@@ -356,6 +389,12 @@ const approveTask = async (req, res) => {
           ...(d.end_date !== undefined && { end_date: d.end_date ? new Date(d.end_date) : null }),
           status: 'APROVADO', pending_action: null, pending_data: null,
         }
+      })
+    } else if (task.pending_action === 'CONCLUIR') {
+      const d = task.pending_data || {}
+      await prisma.task.update({
+        where: { id },
+        data: { completed: !!d.completed, status: 'APROVADO', pending_action: null, pending_data: null }
       })
     } else {
       await prisma.task.update({ where: { id }, data: { status: 'APROVADO' } })

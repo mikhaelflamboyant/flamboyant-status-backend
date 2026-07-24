@@ -2,7 +2,7 @@ const prisma = require('../lib/prisma')
 const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
 const logger = require('../lib/logger')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
-const { visibilityWhere, canApprove } = require('../services/approvals.service')
+const { visibilityWhere, canApprove, isTIManager } = require('../services/approvals.service')
 
 const TI_AREA = 'Tecnologia da Informação'
 const FULL_VIEW_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
@@ -417,11 +417,11 @@ const updateProject = async (req, res) => {
       return res.status(404).json({ error: 'Projeto não encontrado' })
     }
 
-    const isAnalistaMaster = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+    const isPrivileged = isTIManager(requester)
     const isRequester = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
 
-    if (!isAnalistaMaster && !isRequester && !isResponsible) {
+    if (!isPrivileged && !isRequester && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
     }
 
@@ -651,11 +651,11 @@ const deleteProject = async (req, res) => {
       return res.status(404).json({ error: 'Projeto não encontrado' })
     }
 
-    const isAnalistaMaster = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+    const isPrivileged = isTIManager(requester)
     const isRequester = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
 
-    if (!isAnalistaMaster && !isRequester && !isResponsible) {
+    if (!isPrivileged && !isRequester && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
     }
 
@@ -678,7 +678,7 @@ const assignMember = async (req, res) => {
     const { user_id } = req.body
     const requester = req.user
 
-    if (!['SUPERINTENDENTE', 'GERENTE', 'COORDENADOR', 'ANALISTA_MASTER'].includes(requester.role)) {
+    if (!isTIManager(requester) && requester.role !== 'SUPERINTENDENTE') {
       return res.status(403).json({ error: 'Sem permissão para atribuir membros' })
     }
 

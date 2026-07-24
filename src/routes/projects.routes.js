@@ -12,7 +12,7 @@ const authMiddleware = require('../middlewares/auth.middleware')
 
 router.use(authMiddleware)
 
-router.get('/freshservice-requests', requireRole('ANALISTA_MASTER', 'COORDENADOR', 'GERENTE', 'SUPERINTENDENTE'), listFreshserviceRequests)
+router.get('/freshservice-requests', requireRole('ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'COORDENADOR', 'GERENTE', 'SUPERINTENDENTE'), listFreshserviceRequests)
 router.get('/', listProjects)
 router.get('/archived', listArchivedProjects)
 router.get('/go-live', listGoLiveProjects)

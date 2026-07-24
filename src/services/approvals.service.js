@@ -17,4 +17,6 @@ function visibilityWhere(requester, authorField = 'author_id') {
   }
 }
 
-module.exports = { needsApproval, canApprove, visibilityWhere, APPROVER_ROLES }
+const isTIManager = canApprove
+
+module.exports = { needsApproval, canApprove, isTIManager, visibilityWhere, APPROVER_ROLES }

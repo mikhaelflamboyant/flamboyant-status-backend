@@ -1,11 +1,12 @@
 const prisma = require('../lib/prisma')
+const { isTIManager } = require('../services/approvals.service')
 const logger = require('../lib/logger')
 
 const HIERARCHY = {
   ANALISTA_MASTER: 7,
   ANALISTA_TESTADOR: 7,
-  SUPERINTENDENTE: 6,
-  DIRETOR: 5,
+  DIRETOR: 6,
+  SUPERINTENDENTE: 5,
   GERENTE: 4,
   COORDENADOR: 3,
   SUPERVISOR: 2,
@@ -62,14 +63,14 @@ const updateUserRole = async (req, res) => {
       return res.status(400).json({ error: 'Perfil inválido' })
     }
 
-    if (!CAN_APPROVE.includes(requester.role)) {
+    if (!isTIManager(requester) || requester.area !== TI_AREA) {
       return res.status(403).json({ error: 'Sem permissão para alterar perfis' })
     }
 
     const target = await prisma.user.findUnique({ where: { id } })
     if (!target) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[role] || 0) && requester.role !== 'ANALISTA_MASTER') {
+    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[role] || 0) && !isTIManager(requester)) {
       return res.status(403).json({ error: 'Você não pode atribuir um perfil igual ou superior ao seu' })
     }
 
@@ -104,7 +105,7 @@ const approveUser = async (req, res) => {
     const { id } = req.params
     const requester = req.user
 
-    if (!CAN_APPROVE.includes(requester.role) || requester.area !== TI_AREA) {
+    if (!isTIManager(requester) || requester.area !== TI_AREA) {
       return res.status(403).json({ error: 'Sem permissão para aprovar usuários' })
     }
 
@@ -129,8 +130,8 @@ const rejectUser = async (req, res) => {
     const { id } = req.params
     const requester = req.user
 
-    if (!CAN_APPROVE.includes(requester.role) || requester.area !== TI_AREA) {
-      return res.status(403).json({ error: 'Sem permissão para recusar usuários' })
+    if (!isTIManager(requester) || requester.area !== TI_AREA) {
+      return res.status(403).json({ error: 'Sem permissão para aprovar usuários' })
     }
 
     const user = await prisma.user.findUnique({ where: { id } })
@@ -154,18 +155,18 @@ const deactivateUser = async (req, res) => {
     const { id } = req.params
     const requester = req.user
 
-    if (!CAN_APPROVE.includes(requester.role)) {
+    if (!isTIManager(requester) || requester.area !== TI_AREA) {
       return res.status(403).json({ error: 'Sem permissão para desativar usuários' })
     }
 
     const target = await prisma.user.findUnique({ where: { id } })
     if (!target) return res.status(404).json({ error: 'Usuário não encontrado' })
 
-    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[target.role] || 0) && !['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
+    if ((HIERARCHY[requester.role] || 0) <= (HIERARCHY[target.role] || 0) && !isTIManager(requester)) {
       return res.status(403).json({ error: 'Você não pode desativar um usuário com perfil igual ou superior ao seu' })
     }
 
-    if (!['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)) {
+    if (!isTIManager(requester) || requester.area !== TI_AREA) {
       const requesterUser = await prisma.user.findUnique({ where: { id: requester.id } })
       if (requesterUser.area !== target.area) {
         return res.status(403).json({ error: 'Você só pode desativar usuários da mesma área que a sua' })
