@@ -22,7 +22,7 @@ const canManageTasks = async (requester, projectId) => {
   const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
   if (!isFromTI) return false
   if (['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR'].includes(requester.role)) return true
-  if (requester.role === 'ANALISTA') {
+  if (['ANALISTA', 'ESTAGIARIO'].includes(requester.role)) {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: { requesters: true, members: true }
@@ -173,8 +173,9 @@ const updateTask = async (req, res) => {
     const isResponsible = task.project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
     const isAssignee = task.assignee_id === requester.id ||
       task.assignees?.some(a => a.user_id === requester.id)
+    const canManage = await canManageTasks(requester, task.project_id)
 
-    if (!isPrivileged && !(isResponsible && isAssignee)) {
+    if (!isPrivileged && !(isResponsible && isAssignee) && !canManage) {
       return res.status(403).json({ error: 'Apenas o responsável pelo projeto que também é responsável pela tarefa pode editá-la' })
     }
 
