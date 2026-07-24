@@ -79,9 +79,11 @@ const createStatusUpdate = async (req, res) => {
 
     const isOwner = project.owner_id === requester.id
     const isMember = project.members.some(m => m.user_id === requester.id)
+    const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
+    const isRequesterLinked = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
-    if (!isOwner && !isMember && !isPrivileged) {
+    if (!isOwner && !isMember && !isResponsible && !isRequesterLinked && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para atualizar este projeto' })
     }
 
