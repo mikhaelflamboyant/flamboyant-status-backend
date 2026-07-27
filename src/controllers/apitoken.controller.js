@@ -3,7 +3,7 @@ const crypto = require('crypto')
 const logger = require('../lib/logger')
 
 const TI_AREA = 'Tecnologia da Informação'
-const ALLOWED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
+const ALLOWED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR', 'ANALISTA']
 
 const canManageTokens = (user) => {
   return user.area === TI_AREA && ALLOWED_ROLES.includes(user.role)
