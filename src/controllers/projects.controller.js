@@ -433,9 +433,9 @@ const updateProject = async (req, res) => {
     } = req.body
 
     const PRIVILEGED_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
-    const isPrivileged = PRIVILEGED_ROLES.includes(requester.role) && isResponsible
+    const canChangePhase = PRIVILEGED_ROLES.includes(requester.role) && isResponsible
 
-    if (current_phase && current_phase !== project.current_phase && !project.legacy && !isPrivileged) {
+    if (current_phase && current_phase !== project.current_phase && !project.legacy && !canChangePhase) {
       const scopeItems = await prisma.scopeItem.findMany({
         where: { project_id: id, status: 'APROVADO' }
       })
