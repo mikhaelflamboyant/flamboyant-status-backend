@@ -5,8 +5,13 @@ const TI_AREA = 'Tecnologia da Informação'
 const EXECUTION_PHASES = ['DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE']
 const GO_LIVE_PHASES = ['RECEBIDA', 'ENTREVISTA_SOLICITANTE', 'LEVANTAMENTO_REQUISITOS', 'ANALISE_SOLUCAO', 'DESENVOLVIMENTO', 'TESTES', 'VALIDACAO_SOLICITANTE']
 
-const isTI = (user) =>
-  user.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(user.role)
+const { hasPermission } = require('./../services/rolePermissions.service')
+
+const isTI = async (user) => {
+  const inTI = user.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(user.role)
+  if (!inTI) return false
+  return hasPermission(user, 'panel.personal')
+}
 
 function getCurrentWeekRange() {
   const now = new Date()
@@ -76,7 +81,7 @@ async function getResponsibleProjectIds(userId) {
 const getPersonalDashboard = async (req, res) => {
   try {
     const requester = req.user
-    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    if (!(await isTI(requester))) return res.status(403).json({ error: 'Sem permissão' })
 
     const { project_id, phase } = req.query
     const allProjectIds = await getResponsibleProjectIds(requester.id)
@@ -262,7 +267,7 @@ const getPersonalDashboard = async (req, res) => {
 const getGoLive = async (req, res) => {
   try {
     const requester = req.user
-    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    if (!(await isTI(requester))) return res.status(403).json({ error: 'Sem permissão' })
 
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
@@ -303,7 +308,7 @@ const getGoLive = async (req, res) => {
 const getStatusReports = async (req, res) => {
   try {
     const requester = req.user
-    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    if (!(await isTI(requester))) return res.status(403).json({ error: 'Sem permissão' })
 
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
@@ -363,7 +368,7 @@ const getStatusReports = async (req, res) => {
 const getScopeItems = async (req, res) => {
   try {
     const requester = req.user
-    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    if (!(await isTI(requester))) return res.status(403).json({ error: 'Sem permissão' })
 
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
@@ -411,7 +416,7 @@ const getScopeItems = async (req, res) => {
 const getTasks = async (req, res) => {
   try {
     const requester = req.user
-    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    if (!(await isTI(requester))) return res.status(403).json({ error: 'Sem permissão' })
 
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
@@ -462,7 +467,7 @@ const getTasks = async (req, res) => {
 const getFeed = async (req, res) => {
   try {
     const requester = req.user
-    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    if (!(await isTI(requester))) return res.status(403).json({ error: 'Sem permissão' })
 
     const page = parseInt(req.query.page) || 1
     const pageSize = 10
@@ -513,7 +518,7 @@ const getFeed = async (req, res) => {
 const getPersonalProjects = async (req, res) => {
   try {
     const requester = req.user
-    if (!isTI(requester)) return res.status(403).json({ error: 'Sem permissão' })
+    if (!(await isTI(requester))) return res.status(403).json({ error: 'Sem permissão' })
     const projectIds = await getResponsibleProjectIds(requester.id)
     const projects = await prisma.project.findMany({
       where: { id: { in: projectIds } },

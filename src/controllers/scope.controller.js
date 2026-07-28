@@ -9,6 +9,7 @@ const APPROVER_ROLES = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_T
 const { syncMentions } = require('../services/mentions.service')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 const { needsApproval } = require('../services/approvals.service')
+const { hasPermission } = require('../services/rolePermissions.service')
 
 const canMention = (requester, project) => {
   const isFromTI = requester.area === TI_AREA ||
@@ -29,6 +30,10 @@ const listScopeItems = async (req, res) => {
   try {
     const { project_id } = req.params
     const requester = req.user
+
+    if (!(await hasPermission(requester, 'schedule.view'))) {
+      return res.status(403).json({ error: 'Sem permissão para visualizar o cronograma' })
+    }
 
     const items = await prisma.scopeItem.findMany({
       where: { project_id },
@@ -92,6 +97,9 @@ const createScopeItem = async (req, res) => {
     const requester = req.user
 
     if (!isFromTI(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
+    }
+    if (!(await hasPermission(requester, 'schedule.create'))) {
       return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
     }
     if (!title) {
@@ -167,6 +175,9 @@ const updateScopeItem = async (req, res) => {
     const requester = req.user
 
     if (!isFromTI(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
+    }
+    if (!(await hasPermission(requester, 'schedule.create'))) {
       return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
     }
 
@@ -295,6 +306,9 @@ const deleteScopeItem = async (req, res) => {
     const requester = req.user
 
     if (!isFromTI(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
+    }
+    if (!(await hasPermission(requester, 'schedule.create'))) {
       return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
     }
 

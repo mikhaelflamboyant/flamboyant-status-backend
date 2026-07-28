@@ -4,6 +4,7 @@ const touchProject = (project_id) =>
 const { notifyNewStatus } = require('../services/notifications.service')
 const logger = require('../lib/logger')
 const { needsApproval, canApprove, visibilityWhere } = require('../services/approvals.service')
+const { hasPermission } = require('../services/rolePermissions.service')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 
 const listStatusUpdates = async (req, res) => {
@@ -66,6 +67,9 @@ const createStatusUpdate = async (req, res) => {
     }
     if (!highlights && !next_steps) {
       return res.status(400).json({ error: 'Preencha pelo menos destaques ou próximos passos' })
+    }
+    if (!(await hasPermission(requester, 'status_report.create'))) {
+      return res.status(403).json({ error: 'Sem permissão para criar status report' })
     }
 
     const project = await prisma.project.findUnique({
@@ -168,6 +172,9 @@ const updateStatusUpdate = async (req, res) => {
     if (!isAuthor && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para editar esta atualização' })
     }
+    if (!isPrivileged && !(await hasPermission(requester, 'status_report.edit'))) {
+      return res.status(403).json({ error: 'Sem permissão para editar esta atualização' })
+    }
 
     if (needsApproval(requester) && update.status === 'APROVADO') {
       const pendingData = {
@@ -234,6 +241,9 @@ const deleteStatusUpdate = async (req, res) => {
     const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
     if (!isAuthor && !isPrivileged) {
+      return res.status(403).json({ error: 'Sem permissão para excluir esta atualização' })
+    }
+    if (!isPrivileged && !(await hasPermission(requester, 'status_report.delete'))) {
       return res.status(403).json({ error: 'Sem permissão para excluir esta atualização' })
     }
 

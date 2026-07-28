@@ -424,6 +424,9 @@ const updateProject = async (req, res) => {
     if (!isPrivileged && !isRequester && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
     }
+    if (!isPrivileged && !(await hasPermission(requester, 'projects.edit'))) {
+      return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
+    }
 
     const {
       title, area, business_unit, execution_type, level, complexity, description,
@@ -656,6 +659,9 @@ const deleteProject = async (req, res) => {
     const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
 
     if (!isPrivileged && !isRequester && !isResponsible) {
+      return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
+    }
+    if (!isPrivileged && !(await hasPermission(requester, 'projects.edit'))) {
       return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
     }
 

@@ -2,6 +2,7 @@ const prisma = require('../lib/prisma')
 const logger = require('../lib/logger')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 const { needsApproval, canApprove, visibilityWhere } = require('../services/approvals.service')
+const { hasPermission } = require('../services/rolePermissions.service')
 const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 
@@ -44,6 +45,9 @@ const listTasks = async (req, res) => {
     if (!isFromTI) {
       return res.status(403).json({ error: 'Sem permissão para visualizar tarefas' })
     }
+    if (!(await hasPermission(requester, 'tasks.view'))) {
+      return res.status(403).json({ error: 'Sem permissão para visualizar tarefas' })
+    }
 
     const tasks = await prisma.task.findMany({
       where: { project_id, ...visibilityWhere(requester) },
@@ -78,6 +82,9 @@ const createTask = async (req, res) => {
 
     const allowed = await canManageTasks(requester, project_id)
     if (!allowed) {
+      return res.status(403).json({ error: 'Sem permissão para criar tarefas' })
+    }
+    if (!(await hasPermission(requester, 'tasks.create'))) {
       return res.status(403).json({ error: 'Sem permissão para criar tarefas' })
     }
 
@@ -176,6 +183,9 @@ const updateTask = async (req, res) => {
     const canManage = await canManageTasks(requester, task.project_id)
 
     if (!isPrivileged && !(isResponsible && isAssignee) && !canManage) {
+      return res.status(403).json({ error: 'Apenas o responsável pelo projeto que também é responsável pela tarefa pode editá-la' })
+    }
+    if (!isPrivileged && !(await hasPermission(requester, 'tasks.edit'))) {
       return res.status(403).json({ error: 'Apenas o responsável pelo projeto que também é responsável pela tarefa pode editá-la' })
     }
 
@@ -302,6 +312,9 @@ const completeTask = async (req, res) => {
       taskWithAssignees.assignees?.some(a => a.user_id === requester.id)
 
     if (!isAuthor && !isAssignee) {
+      return res.status(403).json({ error: 'Apenas o autor ou um responsável pela tarefa pode concluí-la' })
+    }
+    if (!(await hasPermission(requester, 'tasks.complete'))) {
       return res.status(403).json({ error: 'Apenas o autor ou um responsável pela tarefa pode concluí-la' })
     }
 

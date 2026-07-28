@@ -5,6 +5,7 @@ const touchProject = (project_id) =>
 const { syncMentions } = require('../services/mentions.service')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 const { needsApproval, canApprove, visibilityWhere } = require('../services/approvals.service')
+const { hasPermission } = require('../services/rolePermissions.service')
 
 const TI_AREA = 'Tecnologia da Informação'
 const canMention = (requester, project) => {
@@ -56,6 +57,9 @@ const createRequirement = async (req, res) => {
 
     if (!content) {
       return res.status(400).json({ error: 'Campo obrigatório: content' })
+    }
+    if (!(await hasPermission(requester, 'requirements.create'))) {
+      return res.status(403).json({ error: 'Sem permissão para criar requisito' })
     }
 
     const project = await prisma.project.findUnique({
@@ -125,6 +129,9 @@ const updateRequirement = async (req, res) => {
     if (!content) {
       return res.status(400).json({ error: 'Campo obrigatório: content' })
     }
+    if (!(await hasPermission(requester, 'requirements.create'))) {
+      return res.status(403).json({ error: 'Sem permissão para criar requisito' })
+    }
 
     const project = await prisma.project.findUnique({
       where: { id: project_id },
@@ -135,7 +142,7 @@ const updateRequirement = async (req, res) => {
       return res.status(404).json({ error: 'Projeto não encontrado' })
     }
 
-    const isOwner = project.owner_id === requester.id
+    const isOwner = project.owner_id === requester.create
     const isMember = project.members.some(m => m.user_id === requester.id)
     const isResponsible = await prisma.projectRequester.findFirst({
       where: { project_id, user_id: requester.id, type: 'RESPONSAVEL' }
