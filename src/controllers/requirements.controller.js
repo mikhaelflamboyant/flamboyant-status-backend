@@ -129,8 +129,8 @@ const updateRequirement = async (req, res) => {
     if (!content) {
       return res.status(400).json({ error: 'Campo obrigatório: content' })
     }
-    if (!(await hasPermission(requester, 'requirements.create'))) {
-      return res.status(403).json({ error: 'Sem permissão para criar requisito' })
+    if (!(await hasPermission(requester, 'requirements.edit'))) {
+      return res.status(403).json({ error: 'Sem permissão para editar requisito' })
     }
 
     const project = await prisma.project.findUnique({

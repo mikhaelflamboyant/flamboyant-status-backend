@@ -296,6 +296,9 @@ const createProject = async (req, res) => {
     if (!isTI && !canCreateBacklog) {
       return res.status(403).json({ error: 'Sem permissão para criar projetos.' })
     }
+    if (!(await hasPermission(requester, 'projects.create'))) {
+      return res.status(403).json({ error: 'Sem permissão para criar projetos.' })
+    }
 
     if (!title || !description) {
       return res.status(400).json({ error: 'Campos obrigatórios: título e descrição.' })
@@ -661,10 +664,10 @@ const deleteProject = async (req, res) => {
     if (!isPrivileged && !isRequester && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
     }
-    if (!isPrivileged && !(await hasPermission(requester, 'projects.edit'))) {
+    if (!isPrivileged && !(await hasPermission(requester, 'projects.delete'))) {
       return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
     }
-
+     
     const statusCount = await prisma.statusUpdate.count({ where: { project_id: id } })
     if (statusCount > 0) {
       return res.status(400).json({ error: 'Não é possível excluir um projeto que possui status reports cadastrados. Você pode cancelar o projeto.' })

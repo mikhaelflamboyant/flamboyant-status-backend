@@ -177,7 +177,7 @@ const updateScopeItem = async (req, res) => {
     if (!isFromTI(requester)) {
       return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
     }
-    if (!(await hasPermission(requester, 'schedule.create'))) {
+    if (!(await hasPermission(requester, 'schedule.edit'))) {
       return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
     }
 
@@ -308,7 +308,7 @@ const deleteScopeItem = async (req, res) => {
     if (!isFromTI(requester)) {
       return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
     }
-    if (!(await hasPermission(requester, 'schedule.create'))) {
+    if (!(await hasPermission(requester, 'schedule.delete'))) {
       return res.status(403).json({ error: 'Sem permissão para gerenciar escopo' })
     }
 
