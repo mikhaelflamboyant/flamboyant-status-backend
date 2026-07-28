@@ -352,3 +352,13 @@ model ActivityLog {
 
   @@index([project_id, created_at])
 }
+
+model RolePermission {
+  id         String   @id @default(uuid())
+  role       String
+  permission String
+  enabled    Boolean  @default(true)
+  updated_at DateTime @updatedAt
+
+  @@unique([role, permission])
+}
