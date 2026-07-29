@@ -368,8 +368,19 @@ const deleteTask = async (req, res) => {
       return res.status(403).json({ error: 'Sem permissão para excluir esta tarefa' })
     }
 
+    const projectForLog = await prisma.project.findUnique({ where: { id: task.project_id }, select: { title: true } })
+
     await prisma.task.delete({ where: { id } })
     await touchProject(task.project_id)
+
+    await logActivity({
+      project_id: task.project_id,
+      project_name: projectForLog?.title || '',
+      user_id: requester.id,
+      action_type: ACTION_TYPES.TASK_DELETED,
+      description: `${requester.name} excluiu a tarefa "${task.title}".`,
+    })
+
     return res.status(200).json({ message: 'Tarefa excluída com sucesso' })
   } catch (err) {
     logger.error(err)

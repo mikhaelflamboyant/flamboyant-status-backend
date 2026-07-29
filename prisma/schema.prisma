@@ -340,17 +340,22 @@ model Mention {
 }
 
 model ActivityLog {
-  id          String   @id @default(uuid())
-  project_id  String
-  user_id     String
-  action_type String
-  description String
-  created_at  DateTime @default(now())
+  id             String   @id @default(uuid())
+  project_id     String?
+  project_name   String   @default("")
+  user_id        String
+  action_type    String
+  description    String
+  previous_value String?
+  new_value      String?
+  created_at     DateTime @default(now())
 
-  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [project_id], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([project_id, created_at])
+  @@index([created_at])
+  @@index([user_id, created_at])
 }
 
 model RolePermission {

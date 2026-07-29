@@ -399,6 +399,14 @@ const createProject = async (req, res) => {
 
     await notifyNewProject(project, [...managers, ...areaManagers])
 
+    await logActivity({
+      project_id: project.id,
+      project_name: project.title,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.PROJECT_CREATED,
+      description: `${requester.name} criou o projeto.`,
+    })
+
     return res.status(201).json(project)
   } catch (err) {
     logger.error(err)
@@ -536,6 +544,27 @@ const updateProject = async (req, res) => {
           to_phase: current_phase,
         }
       })
+      await logActivity({
+        project_id: id,
+        project_name: project.title,
+        user_id: requester.id,
+        action_type: ACTION_TYPES.PROJECT_PHASE_CHANGED,
+        description: `${requester.name} alterou a fase do projeto.`,
+        previous_value: project.current_phase,
+        new_value: current_phase,
+      })
+    }
+
+    if (completion_pct !== undefined && Number(completion_pct) !== project.completion_pct) {
+      await logActivity({
+        project_id: id,
+        project_name: project.title,
+        user_id: requester.id,
+        action_type: ACTION_TYPES.PROJECT_PROGRESS_CHANGED,
+        description: `${requester.name} alterou a conclusão do projeto.`,
+        previous_value: `${project.completion_pct}%`,
+        new_value: `${completion_pct}%`,
+      })
     }
 
     if (go_live && project.go_live && new Date(go_live).toISOString() !== new Date(project.go_live).toISOString()) {
@@ -667,11 +696,19 @@ const deleteProject = async (req, res) => {
     if (!isPrivileged && !(await hasPermission(requester, 'projects.delete'))) {
       return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
     }
-     
+
     const statusCount = await prisma.statusUpdate.count({ where: { project_id: id } })
     if (statusCount > 0) {
       return res.status(400).json({ error: 'Não é possível excluir um projeto que possui status reports cadastrados. Você pode cancelar o projeto.' })
     }
+
+    await logActivity({
+      project_id: null,
+      project_name: project.title,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.PROJECT_DELETED,
+      description: `${requester.name} excluiu o projeto.`,
+    })
 
     await prisma.project.delete({ where: { id } })
     return res.status(200).json({ message: 'Projeto excluído com sucesso' })
@@ -1064,6 +1101,14 @@ const cancelProject = async (req, res) => {
         cancelled_at: new Date(),
         cancelled_by: requester.name,
       }
+    })
+
+    await logActivity({
+      project_id: id,
+      project_name: project.title,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.PROJECT_CANCELLED,
+      description: `${requester.name} cancelou o projeto. Motivo: ${reason.trim()}`,
     })
 
     return res.status(200).json(updated)

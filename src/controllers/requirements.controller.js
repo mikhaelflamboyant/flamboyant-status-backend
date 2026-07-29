@@ -108,8 +108,9 @@ const createRequirement = async (req, res) => {
 
     await logActivity({
       project_id,
+      project_name: project.title,
       user_id: requester.id,
-      action_type: ACTION_TYPES.REQUIREMENT_UPDATED,
+      action_type: ACTION_TYPES.REQUIREMENT_CREATED,
       description: `${requester.name} cadastrou os requisitos do projeto.`,
     })
 

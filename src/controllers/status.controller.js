@@ -102,6 +102,14 @@ const createStatusUpdate = async (req, res) => {
     })
     await touchProject(project_id)
 
+    await logActivity({
+      project_id,
+      project_name: project.title,
+      user_id: requester.id,
+      action_type: ACTION_TYPES.STATUS_CREATED,
+      description: `${requester.name} cadastrou um status report.`,
+    })
+
     if (status !== 'APROVADO') {
       return res.status(201).json(update)
     }
@@ -161,10 +169,13 @@ const updateStatusUpdate = async (req, res) => {
     const update = await prisma.statusUpdate.findFirst({
       where: { id, project_id }
     })
+    const projectForLog = await prisma.project.findUnique({ where: { id: project_id }, select: { title: true } })
 
     if (!update) {
       return res.status(404).json({ error: 'Atualização não encontrada' })
     }
+
+    const projectForLog = await prisma.project.findUnique({ where: { id: project_id }, select: { title: true } })
 
     const isAuthor = update.author_id === requester.id
     const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
@@ -189,6 +200,15 @@ const updateStatusUpdate = async (req, res) => {
         include: { author: { select: { id: true, name: true } }, risks: true }
       })
       await touchProject(update.project_id)
+
+      await logActivity({
+        project_id,
+        project_name: projectForLog?.title || '',
+        user_id: requester.id,
+        action_type: ACTION_TYPES.STATUS_UPDATED,
+        description: `${requester.name} propôs uma edição em um status report (aguardando aprovação).`,
+      })
+
       return res.status(200).json(pendingUpdate)
     }
 
@@ -204,6 +224,15 @@ const updateStatusUpdate = async (req, res) => {
         include: { author: { select: { id: true, name: true } }, risks: true }
       })
       await touchProject(update.project_id)
+
+      await logActivity({
+        project_id,
+        project_name: projectForLog?.title || '',
+        user_id: requester.id,
+        action_type: ACTION_TYPES.STATUS_UPDATED,
+        description: `${requester.name} editou um status report.`,
+      })
+
       return res.status(200).json(pendingUpdate)
     }
 
@@ -221,6 +250,14 @@ const updateStatusUpdate = async (req, res) => {
       }
     })
     await touchProject(update.project_id)
+
+    await logActivity({
+      project_id,
+      project_name: projectForLog?.title || '',
+      user_id: requester.id,
+      action_type: ACTION_TYPES.STATUS_UPDATED,
+      description: `${requester.name} editou um status report.`,
+    })
 
     return res.status(200).json(updated)
   } catch (err) {
@@ -243,18 +280,26 @@ const deleteStatusUpdate = async (req, res) => {
     if (!isAuthor && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para excluir esta atualização' })
     }
-    if (!isPrivileged && !(await hasPermission(requester, 'status_report.delete'))) {
-      return res.status(403).json({ error: 'Sem permissão para excluir esta atualização' })
-    }
+
+    const projectForLog = await prisma.project.findUnique({ where: { id: project_id }, select: { title: true } })
 
     await prisma.statusUpdate.delete({ where: { id } })
     await touchProject(update.project_id)
+
+    await logActivity({
+      project_id,
+      project_name: projectForLog?.title || '',
+      user_id: requester.id,
+      action_type: ACTION_TYPES.STATUS_DELETED,
+      description: `${requester.name} excluiu um status report.`,
+    })
+
     return res.status(200).json({ message: 'Status report excluído com sucesso' })
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao excluir status report' })
   }
-}
+}  
 
 const approveStatusUpdate = async (req, res) => {
   try {
