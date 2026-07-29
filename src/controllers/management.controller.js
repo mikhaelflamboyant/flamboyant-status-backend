@@ -450,4 +450,4 @@ const getPendingApprovals = async (req, res) => {
   }
 }
 
-module.exports = { getDashboard, getUsers, getPendingApprovals }
+module.exports = { getDashboard, getUsers, getPendingApprovals, canAccessManagement }

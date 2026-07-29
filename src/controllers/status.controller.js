@@ -175,8 +175,6 @@ const updateStatusUpdate = async (req, res) => {
       return res.status(404).json({ error: 'Atualização não encontrada' })
     }
 
-    const projectForLog = await prisma.project.findUnique({ where: { id: project_id }, select: { title: true } })
-
     const isAuthor = update.author_id === requester.id
     const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
