@@ -106,7 +106,7 @@ const getRecentActionFilters = async (req, res) => {
         distinct: ['user_id'],
       }),
       prisma.activityLog.findMany({
-        where: { project_id: { not: null }, user: TI_USER_FILTER },
+        where: { NOT: { project_id: null }, user: TI_USER_FILTER },
         select: { project_id: true, project_name: true },
         distinct: ['project_id'],
       }),
