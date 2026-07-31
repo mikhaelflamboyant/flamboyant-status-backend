@@ -364,6 +364,7 @@ model RolePermission {
   permission String
   enabled    Boolean  @default(true)
   updated_at DateTime @updatedAt
+  created_at DateTime @default(now())
 
-  @@unique([role, permission])
+  @@unique([role, permission], name: "role_permission")
 }
