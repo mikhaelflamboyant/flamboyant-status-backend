@@ -22,10 +22,19 @@ const ACTION_TYPES = {
 
 async function logActivity({ project_id, project_name, user_id, action_type, description, previous_value, new_value }) {
   try {
+    let snapshot = project_name || ''
+    if (!snapshot && project_id) {
+      const project = await prisma.project.findUnique({
+        where: { id: project_id },
+        select: { title: true },
+      })
+      snapshot = project?.title || ''
+    }
+
     await prisma.activityLog.create({
       data: {
         project_id: project_id || null,
-        project_name: project_name || '',
+        project_name: snapshot,
         user_id,
         action_type,
         description,

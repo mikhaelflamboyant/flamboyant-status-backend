@@ -3,6 +3,7 @@ const { notifyUserLinkedToProject, notifyNewProject } = require('../services/not
 const logger = require('../lib/logger')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 const { visibilityWhere, canApprove, isTIManager } = require('../services/approvals.service')
+const { hasPermission } = require('../services/rolePermissions.service')
 
 const TI_AREA = 'Tecnologia da Informação'
 const FULL_VIEW_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
