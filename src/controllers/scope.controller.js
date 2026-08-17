@@ -59,14 +59,15 @@ const listScopeItems = async (req, res) => {
       const isOwner = item.created_by === requester.id
 
       if (hasPending && (isOwner || canApprove(requester))) {
+        const isEdit = item.pending_action === 'EDITAR'
         return {
           ...item,
           display_title: item.pending_title ?? item.title,
-          display_description: item.pending_description ?? item.description,
-          display_phase: item.pending_phase ?? item.phase,
-          display_start_date: item.pending_start_date ?? item.start_date,
-          display_end_date: item.pending_end_date ?? item.end_date,
-          display_completion_pct: item.pending_completion_pct ?? item.completion_pct,
+          display_description: isEdit ? item.pending_description : (item.pending_description ?? item.description),
+          display_phase: isEdit ? item.pending_phase : (item.pending_phase ?? item.phase),
+          display_start_date: isEdit ? item.pending_start_date : (item.pending_start_date ?? item.start_date),
+          display_end_date: isEdit ? item.pending_end_date : (item.pending_end_date ?? item.end_date),
+          display_completion_pct: isEdit ? item.pending_completion_pct : (item.pending_completion_pct ?? item.completion_pct),
           showing_pending: true,
         }
       }
@@ -392,11 +393,11 @@ const approveScope = async (req, res) => {
           where: { id: item.id },
           data: {
             title: item.pending_title ?? item.title,
-            description: item.pending_description ?? item.description,
-            phase: item.pending_phase ?? item.phase,
-            start_date: item.pending_start_date ?? item.start_date,
-            end_date: item.pending_end_date ?? item.end_date,
-            completion_pct: item.pending_completion_pct ?? item.completion_pct,
+            description: item.pending_description,
+            phase: item.pending_phase,
+            start_date: item.pending_start_date,
+            end_date: item.pending_end_date,
+            completion_pct: item.pending_completion_pct ?? 0,
             pending_title: null,
             pending_description: null,
             pending_phase: null,
@@ -527,11 +528,11 @@ const approveItems = async (req, res) => {
           where: { id },
           data: {
             title: item.pending_title ?? item.title,
-            description: item.pending_description ?? item.description,
-            phase: item.pending_phase ?? item.phase,
-            start_date: item.pending_start_date ?? item.start_date,
-            end_date: item.pending_end_date ?? item.end_date,
-            completion_pct: item.pending_completion_pct ?? item.completion_pct,
+            description: item.pending_description,
+            phase: item.pending_phase,
+            start_date: item.pending_start_date,
+            end_date: item.pending_end_date,
+            completion_pct: item.pending_completion_pct ?? 0,
             pending_title: null,
             pending_description: null,
             pending_phase: null,
