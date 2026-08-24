@@ -6,7 +6,8 @@ const {
   getProjectById, createProject, updateProject, deleteProject, assignMember,
   approveFreshservice, rejectFreshservice, listFreshserviceRequests, assignResponsible,
   cancelProject, listCancelledProjects, restoreProject, duplicateProject,
-  getMentionableUsers, getMentionableProjects
+  getMentionableUsers, getMentionableProjects,
+  updateMyPriorities
 } = require('../controllers/projects.controller')
 const authMiddleware = require('../middlewares/auth.middleware')
 
@@ -18,6 +19,7 @@ router.get('/archived', listArchivedProjects)
 router.get('/go-live', listGoLiveProjects)
 router.get('/backlog', requireRole('ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR', 'SUPERINTENDENTE', 'DIRETOR', 'SUPERVISOR', 'ANALISTA'), listBacklogProjects)
 router.get('/mentionable-projects', getMentionableProjects)
+router.patch('/priorities', updateMyPriorities)
 router.get('/cancelled', listCancelledProjects)
 router.post('/:id/assign', assignResponsible)
 router.patch('/:id/cancel', cancelProject)

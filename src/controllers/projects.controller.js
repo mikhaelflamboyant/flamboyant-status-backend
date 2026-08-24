@@ -146,10 +146,18 @@ const listProjects = async (req, res) => {
       orderBy: { created_at: 'desc' }
     })
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const priorities = await prisma.projectPriority.findMany({
+      where: { user_id: requester.id },
+      select: { project_id: true, position: true },
+    })
+    const posMap = new Map(priorities.map(p => [p.project_id, p.position]))
 
-    return res.status(200).json(projects)
+    const withPosition = projects.map(p => ({
+      ...p,
+      my_position: posMap.has(p.id) ? posMap.get(p.id) : null,
+    }))
+
+    return res.status(200).json(withPosition)
   } catch (err) {
     logger.error(err)
     return res.status(500).json({ error: 'Erro ao listar projetos' })
@@ -1231,6 +1239,86 @@ const getMentionableProjects = async (req, res) => {
   }
 }
 
+const listMyPriorities = async (req, res) => {
+  try {
+    const requester = req.user
+
+    const projects = await prisma.project.findMany({
+      where: {
+        archived: false,
+        origin: 'NORMAL',
+        current_phase: { notIn: ['ENTREGUE', 'BACKLOG', 'SUPORTE', 'CANCELADO'] },
+        requesters: { some: { user_id: requester.id, type: 'RESPONSAVEL' } },
+      },
+      select: {
+        id: true, title: true, area: true, business_unit: true,
+        traffic_light: true, current_phase: true, go_live: true,
+        completion_pct: true, level: true,
+      },
+      orderBy: { created_at: 'desc' },
+    })
+
+    const saved = await prisma.projectPriority.findMany({
+      where: { user_id: requester.id },
+      select: { project_id: true, position: true },
+    })
+    const posMap = new Map(saved.map(p => [p.project_id, p.position]))
+
+    const ordered = projects
+      .map(p => ({ ...p, position: posMap.has(p.id) ? posMap.get(p.id) : null }))
+      .sort((a, b) => {
+        if (a.position === null && b.position === null) return 0
+        if (a.position === null) return 1
+        if (b.position === null) return -1
+        return a.position - b.position
+      })
+
+    return res.status(200).json(ordered)
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao carregar prioridades' })
+  }
+}
+
+const updateMyPriorities = async (req, res) => {
+  try {
+    const requester = req.user
+    const { project_ids } = req.body
+
+    if (!Array.isArray(project_ids)) {
+      return res.status(400).json({ error: 'Lista de projetos inválida' })
+    }
+
+    const allowed = await prisma.project.findMany({
+      where: {
+        id: { in: project_ids },
+        requesters: { some: { user_id: requester.id, type: 'RESPONSAVEL' } },
+      },
+      select: { id: true },
+    })
+    const allowedIds = new Set(allowed.map(p => p.id))
+
+    const valid = project_ids.filter(id => allowedIds.has(id))
+    if (valid.length !== project_ids.length) {
+      return res.status(403).json({ error: 'Só é possível priorizar projetos sob sua responsabilidade' })
+    }
+
+    await prisma.$transaction([
+      prisma.projectPriority.deleteMany({ where: { user_id: requester.id } }),
+      ...valid.map((project_id, index) =>
+        prisma.projectPriority.create({
+          data: { user_id: requester.id, project_id, position: index },
+        })
+      ),
+    ])
+
+    return res.status(200).json({ message: 'Prioridades salvas com sucesso' })
+  } catch (err) {
+    logger.error(err)
+    return res.status(500).json({ error: 'Erro ao salvar prioridades' })
+  }
+}
+
 module.exports = {
   listProjects, listArchivedProjects, listGoLiveProjects, listBacklogProjects,
   getProjectById, createProject, updateProject,
@@ -1238,4 +1326,5 @@ module.exports = {
   approveFreshservice, rejectFreshservice, listFreshserviceRequests,
   assignResponsible, cancelProject, listCancelledProjects, restoreProject,
   duplicateProject, getMentionableUsers, getMentionableProjects,
+  updateMyPriorities,
 }
