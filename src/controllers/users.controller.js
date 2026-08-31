@@ -89,6 +89,11 @@ const updateUserRole = async (req, res) => {
 
 const listPendingUsers = async (req, res) => {
   try {
+    const requester = req.user
+    if (!isTIManager(requester) || requester.area !== TI_AREA) {
+      return res.status(403).json({ error: 'Sem permissão para listar usuários pendentes' })
+    }
+
     const users = await prisma.user.findMany({
       where: { status: 'PENDENTE' },
       select: { id: true, email: true, name: true, role: true, area: true, created_at: true, status: true }

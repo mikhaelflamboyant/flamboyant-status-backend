@@ -211,6 +211,8 @@ const getProjectById = async (req, res) => {
     const requester = req.user
     const readVisibility = visibilityWhere(requester)
 
+    const isFromTI = requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role)
+
     const project = await prisma.project.findUnique({
       where: { id },
       include: {
@@ -246,6 +248,16 @@ const getProjectById = async (req, res) => {
 
     if (!project) {
       return res.status(404).json({ error: 'Projeto não encontrado' })
+    }
+
+    if (!isFromTI && project.status_updates?.length > 0) {
+      const now = new Date()
+      const weekStart = new Date(now)
+      weekStart.setDate(now.getDate() - ((now.getDay() + 1) % 7))
+      weekStart.setHours(0, 0, 0, 0)
+
+      const daSemana = project.status_updates.filter(s => new Date(s.created_at) >= weekStart)
+      project.status_updates = daSemana.length > 0 ? daSemana : [project.status_updates[0]]
     }
 
     return res.status(200).json(project)
@@ -402,6 +414,12 @@ const updateProject = async (req, res) => {
 
     if (!isPrivileged && !isRequester && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
+    }
+
+    const CONTROL_FIELDS = ['traffic_light', 'current_phase', 'completion_pct']
+    const tocandoControle = CONTROL_FIELDS.some(f => req.body[f] !== undefined)
+    if (tocandoControle && !isPrivileged) {
+      return res.status(403).json({ error: 'Sem permissão para alterar farol, fase ou conclusão' })
     }
     if (!isPrivileged && !(await hasPermission(requester, 'projects.edit'))) {
       return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
