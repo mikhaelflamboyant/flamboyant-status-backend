@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma')
 const logger = require('../lib/logger')
+const { isFromTIArea } = require('../services/approvals.service')
 
 const createRisk = async (req, res) => {
   try {
@@ -7,6 +8,9 @@ const createRisk = async (req, res) => {
     const { title, description, mitigation } = req.body
     const requester = req.user
 
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar riscos' })
+    }
     if (!title || !description || !mitigation) {
       return res.status(400).json({ error: 'Campos obrigatórios: title, description, mitigation' })
     }
@@ -44,6 +48,10 @@ const updateRisk = async (req, res) => {
     const { id } = req.params
     const { title, description, mitigation } = req.body
     const requester = req.user
+
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar riscos' })
+    }
 
     const risk = await prisma.risk.findUnique({
       where: { id },
@@ -84,6 +92,10 @@ const deleteRisk = async (req, res) => {
   try {
     const { id } = req.params
     const requester = req.user
+
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar riscos' })
+    }
 
     const risk = await prisma.risk.findUnique({
       where: { id },

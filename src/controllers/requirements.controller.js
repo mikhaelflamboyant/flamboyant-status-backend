@@ -4,7 +4,7 @@ const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 const { syncMentions } = require('../services/mentions.service')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
-const { needsApproval, canApprove, visibilityWhere } = require('../services/approvals.service')
+const { needsApproval, canApprove, visibilityWhere, isFromTIArea } = require('../services/approvals.service')
 const { hasPermission } = require('../services/rolePermissions.service')
 
 const TI_AREA = 'Tecnologia da Informação'
@@ -57,6 +57,9 @@ const createRequirement = async (req, res) => {
 
     if (!content) {
       return res.status(400).json({ error: 'Campo obrigatório: content' })
+    }
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar requisitos' })
     }
     if (!(await hasPermission(requester, 'requirements.create'))) {
       return res.status(403).json({ error: 'Sem permissão para criar requisito' })
@@ -130,6 +133,9 @@ const updateRequirement = async (req, res) => {
     if (!content) {
       return res.status(400).json({ error: 'Campo obrigatório: content' })
     }
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para gerenciar requisitos' })
+    }
     if (!(await hasPermission(requester, 'requirements.edit'))) {
       return res.status(403).json({ error: 'Sem permissão para editar requisito' })
     }
@@ -143,7 +149,7 @@ const updateRequirement = async (req, res) => {
       return res.status(404).json({ error: 'Projeto não encontrado' })
     }
 
-    const isOwner = project.owner_id === requester.create
+    const isOwner = project.owner_id === requester.id
     const isMember = project.members.some(m => m.user_id === requester.id)
     const isResponsible = await prisma.projectRequester.findFirst({
       where: { project_id, user_id: requester.id, type: 'RESPONSAVEL' }

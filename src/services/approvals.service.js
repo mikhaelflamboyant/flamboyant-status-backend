@@ -7,6 +7,9 @@ const canApprove = (requester) =>
   APPROVER_ROLES.includes(requester.role) &&
   (requester.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester.role))
 
+const isFromTIArea = (requester) =>
+  requester?.area === TI_AREA || ['ANALISTA_MASTER', 'ANALISTA_TESTADOR'].includes(requester?.role)
+
 function visibilityWhere(requester, authorField = 'author_id') {
   if (canApprove(requester)) return {}
   return {
@@ -18,5 +21,5 @@ function visibilityWhere(requester, authorField = 'author_id') {
 }
 
 const isTIManager = canApprove
-
-module.exports = { needsApproval, canApprove, isTIManager, visibilityWhere, APPROVER_ROLES }
+// para
+module.exports = { needsApproval, canApprove, isTIManager, visibilityWhere, isFromTIArea, APPROVER_ROLES }

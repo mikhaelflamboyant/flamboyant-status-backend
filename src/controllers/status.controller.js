@@ -3,7 +3,7 @@ const touchProject = (project_id) =>
   prisma.project.update({ where: { id: project_id }, data: { updated_at: new Date() } })
 const { notifyNewStatus } = require('../services/notifications.service')
 const logger = require('../lib/logger')
-const { needsApproval, canApprove, visibilityWhere } = require('../services/approvals.service')
+const { needsApproval, canApprove, visibilityWhere, isFromTIArea } = require('../services/approvals.service')
 const { hasPermission } = require('../services/rolePermissions.service')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
 
@@ -87,6 +87,9 @@ const createStatusUpdate = async (req, res) => {
     const isRequesterLinked = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para cadastrar status report' })
+    }
     if (!isOwner && !isMember && !isResponsible && !isRequesterLinked && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para atualizar este projeto' })
     }
@@ -178,6 +181,9 @@ const updateStatusUpdate = async (req, res) => {
     const isAuthor = update.author_id === requester.id
     const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para editar status report' })
+    }
     if (!isAuthor && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para editar esta atualização' })
     }
@@ -275,6 +281,9 @@ const deleteStatusUpdate = async (req, res) => {
     const isAuthor = update.author_id === requester.id
     const isPrivileged = ['GERENTE', 'COORDENADOR', 'ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'SUPERINTENDENTE'].includes(requester.role)
 
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para excluir status report' })
+    }
     if (!isAuthor && !isPrivileged) {
       return res.status(403).json({ error: 'Sem permissão para excluir esta atualização' })
     }

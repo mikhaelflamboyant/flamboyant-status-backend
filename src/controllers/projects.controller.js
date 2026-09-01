@@ -2,7 +2,7 @@ const prisma = require('../lib/prisma')
 const { notifyUserLinkedToProject, notifyNewProject } = require('../services/notifications.service')
 const logger = require('../lib/logger')
 const { logActivity, ACTION_TYPES } = require('../services/activityLog.service')
-const { visibilityWhere, canApprove, isTIManager } = require('../services/approvals.service')
+const { visibilityWhere, canApprove, isTIManager, isFromTIArea } = require('../services/approvals.service')
 const { hasPermission } = require('../services/rolePermissions.service')
 
 const TI_AREA = 'Tecnologia da Informação'
@@ -412,6 +412,9 @@ const updateProject = async (req, res) => {
     const isRequester = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
 
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
+    }
     if (!isPrivileged && !isRequester && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para editar este projeto' })
     }
@@ -674,6 +677,9 @@ const deleteProject = async (req, res) => {
     const isRequester = project.requesters.some(r => r.user_id === requester.id && r.type === 'SOLICITANTE')
     const isResponsible = project.requesters.some(r => r.user_id === requester.id && r.type === 'RESPONSAVEL')
 
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
+    }
     if (!isPrivileged && !isRequester && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para excluir este projeto' })
     }
@@ -972,6 +978,10 @@ const duplicateProject = async (req, res) => {
     const { title, include_team, include_schedule, include_costs } = req.body
     const requester = req.user
 
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para duplicar projetos' })
+    }
+
     const original = await prisma.project.findUnique({
       where: { id },
       include: {
@@ -1068,6 +1078,10 @@ const cancelProject = async (req, res) => {
 
     if (!reason || !reason.trim()) {
       return res.status(400).json({ error: 'Motivo do cancelamento é obrigatório' })
+    }
+
+    if (!isFromTIArea(requester)) {
+      return res.status(403).json({ error: 'Sem permissão para cancelar projetos' })
     }
 
     const project = await prisma.project.findUnique({ where: { id } })
