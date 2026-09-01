@@ -9,6 +9,10 @@ const TI_AREA = 'Tecnologia da Informação'
 const FULL_VIEW_ROLES = ['ANALISTA_MASTER', 'ANALISTA_TESTADOR', 'GERENTE', 'COORDENADOR']
 const AREA_MANAGER_ROLES = ['SUPERINTENDENTE', 'DIRETOR', 'GERENTE', 'COORDENADOR', 'SUPERVISOR']
 
+const AREA_OVERSIGHT = {
+  'Operações': ['Operações', 'Engenharia', 'Conservação', 'Manutenção'],
+}
+
 async function visibilityFilter(requester) {
   const isFromTI = requester.area === TI_AREA
 
@@ -22,7 +26,8 @@ async function visibilityFilter(requester) {
 
   if (AREA_MANAGER_ROLES.includes(requester.role)) {
     const user = await prisma.user.findUnique({ where: { id: requester.id } })
-    return { area: { contains: user.area } }
+    const supervisedAreas = AREA_OVERSIGHT[user.area] || [user.area]
+    return { OR: supervisedAreas.map(a => ({ area: { contains: a } })) }
   }
 
   return {
