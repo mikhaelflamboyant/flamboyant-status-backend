@@ -426,7 +426,7 @@ const updateProject = async (req, res) => {
 
     const CONTROL_FIELDS = ['traffic_light', 'current_phase', 'completion_pct']
     const tocandoControle = CONTROL_FIELDS.some(f => req.body[f] !== undefined)
-    if (tocandoControle && !isPrivileged) {
+    if (tocandoControle && !isPrivileged && !isResponsible) {
       return res.status(403).json({ error: 'Sem permissão para alterar farol, fase ou conclusão' })
     }
     if (!isPrivileged && !(await hasPermission(requester, 'projects.edit'))) {
